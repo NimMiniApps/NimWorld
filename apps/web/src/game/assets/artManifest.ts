@@ -3,7 +3,7 @@ export const ART_OVERRIDES: Record<string, string | null> = {
   'fountain-base': 'landmarks/fountain_v02_final.png',
   // Combined into fountain-base production sprite; keep null so procedural crystal is skipped in scene.
   'fountain-crystal': null,
-  'building-arcade': 'landmarks/arcade_v01_final.png',
+  'building-arcade': 'landmarks/arcade_v02_final.png',
   'building-arena': 'landmarks/arena_v02_final.png',
   'building-townhall': 'landmarks/townhall_v01_final.png',
   'building-social': 'landmarks/social_v01_final.png',
@@ -15,7 +15,7 @@ export const ART_OVERRIDES: Record<string, string | null> = {
 /** Target display size so PixelLab canvases match plaza layout footprint. */
 export const ART_DISPLAY_SIZE: Partial<Record<string, { w: number; h: number }>> = {
   'fountain-base': { w: 104, h: 104 },
-  'building-arcade': { w: 190, h: 170 },
+  'building-arcade': { w: 210, h: 188 },
   'building-arena': { w: 160, h: 150 },
   'building-townhall': { w: 140, h: 142 },
   'building-social': { w: 128, h: 126 },

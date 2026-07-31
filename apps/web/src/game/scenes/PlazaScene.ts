@@ -448,8 +448,25 @@ export class PlazaScene extends Phaser.Scene {
         })
       }
 
-      // Arcade sparkles (subtle)
+      // Arcade sparkles + optional portal FX overlay (icon asset)
       if (loc.id === 'arcade') {
+        if (this.textures.exists('fx-arcade-portal')) {
+          const portalFx = this.add.image(loc.x - 8, loc.y - 28, 'fx-arcade-portal')
+          portalFx.setOrigin(0.5, 0.5)
+          portalFx.setDisplaySize(48, 60)
+          portalFx.setDepth(100 + loc.y + 2)
+          portalFx.setAlpha(0.85)
+          this.tweens.add({
+            targets: portalFx,
+            alpha: 1,
+            scaleX: 1.06,
+            scaleY: 1.06,
+            duration: 1100,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+          })
+        }
         for (let i = 0; i < 5; i++) {
           const spark = this.add
             .circle(loc.x - 10 + i * 6, loc.y - 20, 1.5, 0x3de7ff, 0.7)

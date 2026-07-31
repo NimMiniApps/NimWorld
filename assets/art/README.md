@@ -47,7 +47,8 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | Character direction | 2–3 | 3 | v02–v04 exploration (not locked) |
 | Fountain production | — | 2 | candidate + larger-crystal final |
 | Portal production | — | 2 | cabinet miss + pure portal final |
-| Landmark kit | 18 | 6 | arcade, arena×2, townhall, social, market |
+| Landmark kit | 18 | 7 | + arcade wow v02 |
+| Character lock | — | 0 | V4 locked from prior exploration |
 | C Props | 8 | | |
 | D Characters | 4 | | |
 | Reserve | 2 | | |
@@ -71,7 +72,8 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | File | Phaser key | Status | Phase |
 | --- | --- | --- | --- |
 | `landmarks/fountain_v02_final.png` | `fountain-base` | final | B |
-| `landmarks/arcade_v01_final.png` | `building-arcade` | final | B |
+| `landmarks/arcade_v02_final.png` | `building-arcade` | final | B (wow pass) |
+| `landmarks/arcade_v01_final.png` | — | superseded | B |
 | `landmarks/arena_v02_final.png` | `building-arena` | final | B |
 | `landmarks/townhall_v01_final.png` | `building-townhall` | final | B |
 | `landmarks/social_v01_final.png` | `building-social` | final | B |

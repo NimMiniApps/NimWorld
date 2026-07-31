@@ -29,8 +29,8 @@ Per-landmark: Purpose · Mood · Color · Sounds · Lighting · Props · Animati
 - **Animation:** Portal FX overlay (`effects/arcade_portal_v01_final.png`) + marquee pulse  
 - **Recognition:** Y — cyan portal; target: unmistakable silhouette next to Fountain  
 - **Screenshot role:** Hero (pair with Fountain)  
-- **Asset:** `landmarks/arcade_v01_final.png` → `building-arcade`  
-- **Gap (2026-08-01 review):** Arena currently reads stronger visually. Next spend = Arcade wow pass (glowing cyan portal, animated marquee, silhouette) so screenshots lead with Fountain + Arcade.
+- **Asset:** `landmarks/arcade_v02_final.png` → `building-arcade` (wow pass; v01 kept)  
+- **Wow pass:** Cyan portal + holographic marquee + roof crystal beacon — target screenshot pair with Fountain.
 
 ## Arena
 

@@ -261,7 +261,7 @@ Use for screenshots / share cards. Generate when spending resumes (count against
 | 2 | `concepts/plaza_v01_concept.png` | **North star** | Frozen |
 | 3 | `concepts/arcade_portal_v01_concept.png` | Arcade portal | Frozen (FX push in B) |
 | 4 | `concepts/materials_v01_concept.png` | Materials | Frozen (+ doors later) |
-| 5 | `concepts/character_scale_v01_concept.png` | Character scale | **Not frozen** |
+| 5 | `concepts/characters_v04_citizen_refine.png` | Character scale | **Locked (V4)** |
 | 6 | `rejected/lighting_v01_blue_crystal_rejected.png` | Lighting fail | Rejected |
 | 7 | `concepts/lighting_v02_concept.png` | Lighting refine | Frozen (warmer lamps in prod) |
 | 8 | `concepts/style_lock_v01_final.png` | Style lock | Frozen |
