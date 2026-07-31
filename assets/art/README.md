@@ -72,8 +72,8 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | File | Phaser key | Status | Phase |
 | --- | --- | --- | --- |
 | `landmarks/fountain_v02_final.png` | `fountain-base` | final | B |
-| `landmarks/arcade_v02_final.png` | `building-arcade` | final | B (wow pass) |
-| `landmarks/arcade_v01_final.png` | — | superseded | B |
+| `landmarks/arcade_v01_final.png` | `building-arcade` | final | B |
+| `rejected/arcade_v02_checkerboard_rejected.png` | — | rejected | B (baked checkerboard, 0% alpha) |
 | `landmarks/arena_v02_final.png` | `building-arena` | final | B |
 | `landmarks/townhall_v01_final.png` | `building-townhall` | final | B |
 | `landmarks/social_v01_final.png` | `building-social` | final | B |
