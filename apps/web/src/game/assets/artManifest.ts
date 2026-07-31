@@ -1,18 +1,34 @@
 /** Approved PixelLab overrides. Keys = Phaser texture keys. Paths relative to /assets/art/. */
 export const ART_OVERRIDES: Record<string, string | null> = {
-  'fountain-base': null,
+  'fountain-base': 'landmarks/fountain_v02_final.png',
+  // Combined into fountain-base production sprite; keep null so procedural crystal is skipped in scene.
   'fountain-crystal': null,
-  'building-arcade': null,
-  'building-arena': null,
-  'building-townhall': null,
-  'building-social': null,
-  'building-construction': null,
-  'fx-arcade-portal': null,
+  'building-arcade': 'landmarks/arcade_v01_final.png',
+  'building-arena': 'landmarks/arena_v02_final.png',
+  'building-townhall': 'landmarks/townhall_v01_final.png',
+  'building-social': 'landmarks/social_v01_final.png',
+  'building-construction': 'landmarks/marketplace_v01_final.png',
+  'fx-arcade-portal': 'effects/arcade_portal_v01_final.png',
   // props / chars filled as approved
+}
+
+/** Target display size so PixelLab canvases match plaza layout footprint. */
+export const ART_DISPLAY_SIZE: Partial<Record<string, { w: number; h: number }>> = {
+  'fountain-base': { w: 104, h: 104 },
+  'building-arcade': { w: 190, h: 170 },
+  'building-arena': { w: 160, h: 150 },
+  'building-townhall': { w: 140, h: 142 },
+  'building-social': { w: 128, h: 126 },
+  'building-construction': { w: 140, h: 118 },
 }
 
 export function resolveArtOverride(key: string): string | null {
   return ART_OVERRIDES[key] ?? null
+}
+
+/** True when fountain-base is a combined PixelLab sprite (crystal included). */
+export function fountainOverrideIncludesCrystal(): boolean {
+  return resolveArtOverride('fountain-base') !== null
 }
 
 /** Non-null overrides ready for Phaser load.image. */

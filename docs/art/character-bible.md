@@ -1,8 +1,18 @@
 # NimWorld Character Bible
 
-**Status:** Open — Phase A sheet **not frozen** (human review 7.5/10)  
-**Provisional ref:** `assets/art/concepts/character_scale_v01_concept.png`  
+**Status:** Direction exploration in progress — **not production-locked**  
 **Environment authority:** Art Bible frozen; characters must still match outline / lighting / palette.
+
+### Exploration set (2026-08-01)
+
+| File | Notes |
+| --- | --- |
+| `concepts/character_scale_v01_concept.png` | Phase A — too generic RPG (7.5) |
+| `concepts/characters_v02_citizen_lineup.png` | Better: sporty Tournament Master, cozy Player |
+| `concepts/characters_v03_proportion_study.png` | Still RPG (capelet / treasure chest) — weaker |
+| `concepts/characters_v04_citizen_refine.png` | **Best so far** — shared gold badges, blush, family vibe |
+
+Await human pick before Phase D production sheets.
 
 ---
 

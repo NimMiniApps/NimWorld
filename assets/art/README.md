@@ -43,12 +43,15 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 
 | Phase | Planned | Actual | Notes |
 | --- | ---: | ---: | --- |
-| A Art Bible | 8 | 8 | pixen×7 + pixflux×1 (Pro skipped: 20–40 gens/call) |
-| B Hero Landmarks | 18 | | Blocked until “visual language frozen” |
+| A Art Bible | 8 | 8 | pixen×7 + pixflux×1 |
+| Character direction | 2–3 | 3 | v02–v04 exploration (not locked) |
+| Fountain production | — | 2 | candidate + larger-crystal final |
+| Portal production | — | 2 | cabinet miss + pure portal final |
+| Landmark kit | 18 | 6 | arcade, arena×2, townhall, social, market |
 | C Props | 8 | | |
 | D Characters | 4 | | |
 | Reserve | 2 | | |
-| **Total** | **40** | 8 | Trial remaining after A: 32 |
+| **Total** | **40** | **21** | Trial remaining: 19 |
 
 ## Phase A concepts
 
@@ -65,4 +68,17 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 
 ## Manifest (file → Phaser key → status → phase)
 
-_No production overrides yet (Phase B+)._
+| File | Phaser key | Status | Phase |
+| --- | --- | --- | --- |
+| `landmarks/fountain_v02_final.png` | `fountain-base` | final | B |
+| `landmarks/arcade_v01_final.png` | `building-arcade` | final | B |
+| `landmarks/arena_v02_final.png` | `building-arena` | final | B |
+| `landmarks/townhall_v01_final.png` | `building-townhall` | final | B |
+| `landmarks/social_v01_final.png` | `building-social` | final | B |
+| `landmarks/marketplace_v01_final.png` | `building-construction` | final | B |
+| `effects/arcade_portal_v01_final.png` | `fx-arcade-portal` | final | B |
+| `effects/arcade_portal_cabinet_v01_candidate.png` | — | candidate | B |
+| `rejected/arena_v01_house_rejected.png` | — | rejected | B |
+| `concepts/characters_v04_citizen_refine.png` | — | concept | dir |
+
+Approved files are mirrored under `apps/web/public/assets/art/` for Phaser `load.image`.

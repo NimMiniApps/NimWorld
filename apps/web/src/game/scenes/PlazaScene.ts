@@ -5,6 +5,10 @@ import type { WorldBridge } from '@/game/bridge/WorldBridge'
 import { CharacterSprite } from '@/game/entities/CharacterSprite'
 import type { CharSheet } from '@/game/assets/generatePlazaAtlas'
 import {
+  ART_DISPLAY_SIZE,
+  fountainOverrideIncludesCrystal,
+} from '@/game/assets/artManifest'
+import {
   DECOR,
   FUTURE_LANDMARKS,
   LOCATIONS,
@@ -50,7 +54,7 @@ export class PlazaScene extends Phaser.Scene {
   private activeLocationId: string | null = null
   private ambientActors: AmbientActor[] = []
   private depthSprites: Phaser.GameObjects.Image[] = []
-  private crystal!: Phaser.GameObjects.Image
+  private crystal: Phaser.GameObjects.Image | null = null
   private unsubUi: (() => boolean) | null = null
   private readonly speed = 155
   private hasMoved = false
@@ -393,6 +397,8 @@ export class PlazaScene extends Phaser.Scene {
       if (!loc.texture) continue
       const img = this.add.image(loc.x, loc.y, loc.texture)
       img.setOrigin(0.5, 0.82)
+      const size = ART_DISPLAY_SIZE[loc.texture]
+      if (size) img.setDisplaySize(size.w, size.h)
       img.setDepth(100 + loc.y)
       this.depthSprites.push(img)
 
@@ -482,8 +488,11 @@ export class PlazaScene extends Phaser.Scene {
 
   private placeFountain() {
     const { x, y } = PLAZA_CENTER
+    const combined = fountainOverrideIncludesCrystal()
     const base = this.add.image(x, y + 10, 'fountain-base')
     base.setOrigin(0.5, 0.75)
+    const fountainSize = ART_DISPLAY_SIZE['fountain-base']
+    if (fountainSize) base.setDisplaySize(fountainSize.w, fountainSize.h)
     base.setDepth(100 + y)
     this.depthSprites.push(base)
 
@@ -499,17 +508,19 @@ export class PlazaScene extends Phaser.Scene {
       repeat: -1,
     })
 
-    this.crystal = this.add.image(x, y - 22, 'fountain-crystal')
-    this.crystal.setDepth(100 + y + 2)
-    this.tweens.add({
-      targets: this.crystal,
-      y: y - 30,
-      angle: 8,
-      duration: 1600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
+    if (!combined) {
+      this.crystal = this.add.image(x, y - 22, 'fountain-crystal')
+      this.crystal.setDepth(100 + y + 2)
+      this.tweens.add({
+        targets: this.crystal,
+        y: y - 30,
+        angle: 8,
+        duration: 1600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      })
+    }
 
     // Sparse particles — alive, not busy
     for (let i = 0; i < 6; i++) {
