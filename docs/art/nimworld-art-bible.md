@@ -30,7 +30,7 @@ Avoid
 ✗ Flat RPG Maker look
 ```
 
-Characters are **not** locked yet — environment only.
+Characters locked to **V4** — see `docs/art/character-bible.md` (`characters_v04_citizen_refine.png`).
 
 ---
 
@@ -48,13 +48,16 @@ Environment style is frozen. Do **not** regenerate plazas or fountain concepts f
 | Materials | 8.5 | Keep; **add doors** to materials / prop kit |
 | Characters | 7.5 | **Not frozen** — too generic fantasy RPG; revisit before Phase D |
 
-Remaining effort priority (post-freeze):
+Remaining effort priority (post V4 character lock + landmark kit v1):
 
-1. Characters (weakest link — distinctive NimWorld cast)  
-2. Building variants (Arcade, Arena, Town Hall) with magitech  
-3. Props (benches, lanterns, banners, flowers, crates, signs, **doors**)  
-4. Animated effects (portal, fountain, lantern flicker)  
-5. Optional hero marketing frame: **NimConnect Fountain Plaza** hub composition (fountain + stone ring + benches + flowers + lanterns + trees)
+1. **Arcade wow pass** — must rival Arena; Fountain + Arcade = the two screenshot icons  
+2. Character **animations** (idle/walk/wave/hammer/…) — not more style sheets  
+3. NPC variants (Courier first, then Gardener/Merchant/Builder variants)  
+4. Reusable props + animated effects (portal overlay, lantern flicker)  
+5. Path layout polish (less hard “X”; curve + widen into little plazas) — code/layout, not PixelLab ground  
+6. Hub marketing frame only after finals feel settled  
+
+**Do not:** reopen character style; add giant swords / dragons / castles everywhere.
 
 ---
 
@@ -158,13 +161,8 @@ Soft elliptical contact shadows. Landmark casts cool; lantern pools **fully warm
 
 ## Character scale
 
-Reference (provisional only): `assets/art/concepts/character_scale_v01_concept.png` — **not frozen**.
-
-**Problem:** Reads as generic Hero / Rogue / Builder / Wizard fantasy cast, not NimWorld social roles.
-
-**Target feel:** Slightly shorter, more expressive — between **Stardew × MapleStory × CrossCode**. Distinctive Mini App / social-platform vibes (Guide, Builder, Tournament Master, Courier, Merchant energy) rather than D&D classes.
-
-Full Character Bible rewrite before Phase D spend.
+**Locked:** `assets/art/concepts/characters_v04_citizen_refine.png` (9.4/10).  
+Full rules in `docs/art/character-bible.md`. Hoodies/jackets over cloaks/robes; color-coded to landmarks; Courier still to add.
 
 ## Lighting
 

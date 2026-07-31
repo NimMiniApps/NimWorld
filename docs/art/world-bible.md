@@ -21,15 +21,16 @@ Per-landmark: Purpose · Mood · Color · Sounds · Lighting · Props · Animati
 ## Arcade
 
 - **Purpose:** PlayNimiq / games destination  
-- **Mood:** Inviting magitech curiosity  
-- **Color:** Cyan portal + blue roof + warm windows  
+- **Mood:** Inviting magitech curiosity — **must be the “wow” building**  
+- **Color:** Cyan portal + blue roof + warm windows + animated marquee  
 - **Sounds:** Soft portal hum (future)  
-- **Lighting:** Cyan doorway spill + warm windows  
+- **Lighting:** Strong cyan doorway spill + warm windows  
 - **Props:** Barrel, lantern  
-- **Animation:** Portal FX overlay (`effects/arcade_portal_v01_final.png`)  
-- **Recognition:** Y — cyan portal  
-- **Screenshot role:** Hero  
-- **Asset:** `landmarks/arcade_v01_final.png` → `building-arcade`
+- **Animation:** Portal FX overlay (`effects/arcade_portal_v01_final.png`) + marquee pulse  
+- **Recognition:** Y — cyan portal; target: unmistakable silhouette next to Fountain  
+- **Screenshot role:** Hero (pair with Fountain)  
+- **Asset:** `landmarks/arcade_v01_final.png` → `building-arcade`  
+- **Gap (2026-08-01 review):** Arena currently reads stronger visually. Next spend = Arcade wow pass (glowing cyan portal, animated marquee, silhouette) so screenshots lead with Fountain + Arcade.
 
 ## Arena
 
