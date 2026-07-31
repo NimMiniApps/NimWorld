@@ -1,52 +1,73 @@
 # NimWorld Character Bible
 
-**Status:** Draft — fill production rules before Phase D spend  
-**Scale reference:** `assets/art/concepts/character_scale_v01_concept.png`
+**Status:** Open — Phase A sheet **not frozen** (human review 7.5/10)  
+**Provisional ref:** `assets/art/concepts/character_scale_v01_concept.png`  
+**Environment authority:** Art Bible frozen; characters must still match outline / lighting / palette.
+
+---
+
+## Problem with Phase A sheet
+
+Reads as generic fantasy RPG classes (Hero / Rogue / Builder / Wizard) rather than NimWorld social roles (Guide, Builder, Tournament Master, Courier, Merchant energy).
+
+## Target feel
+
+Slightly **shorter**, more **expressive**, distinctive Mini App / social-platform cast.
+
+Inspiration blend: **Stardew Valley × MapleStory × CrossCode** — cute readability + expressive faces + clean game-ready silhouettes. Not grimdark, not D&D cosplay.
 
 ## Proportions
 
-Chibi / big-head family (~2–3 heads in concept art). Shared body mass so the roster reads as one cast.
+Shorter chibi than Phase A; big readable heads; shared body mass so the roster is one family.
 
 ## Eyes
 
-Large, readable, friendly. Same eye language across roster.
+Large, expressive, friendly. Same eye language across roster.
 
 ## Outlines
 
-Single-color dark outline, ~1–2 px, matching landmarks.
+Match environment: thick but clean single-color dark outline.
 
 ## Idle pose
 
-Feet slightly apart, arms at sides / relaxed; slight idle breathe in production.
+Relaxed social pose (wave-ready / approachable). Slight idle breathe in production.
 
 ## Walk cycle
 
-Prefer matching existing Phaser sheet: 4 dirs × 4 frames @ 32×48 (`registerCharacterAnims`). If PixelLab cannot match in 4 gens, ship south-facing idle sprites first and keep procedural walk as fallback.
+Prefer Phaser sheet: 4 dirs × 4 frames @ 32×48. If PixelLab cannot match in budget, south-facing idle first + procedural walk fallback.
 
 ## Animation speed
 
-Short loops; motion supports atmosphere (see Art Bible).
+Short loops; atmospheric, not twitchy.
 
 ## Shadow style
 
-Soft elliptical contact shadow under feet.
+Soft elliptical contact shadow (Art Bible).
 
 ## Color restrictions
 
-| Role | Signature |
-| --- | --- |
-| Player | Cyan hoodie + gold accent |
-| Guide | Teal / green cloak |
-| Builder | Yellow hardhat |
-| Tournament Master | Orange cape / hood |
-| Ghost | Translucent Player (no separate gen) |
+| Role | Signature | Avoid reading as |
+| --- | --- | --- |
+| Player | Cyan + gold accent | Generic “hero knight” |
+| Guide | Friendly greeter colors (teal/soft) | Hooded rogue |
+| Builder | Yellow hardhat / tools, playful | Armored engineer knight |
+| Tournament Master | Arena energy (orange/red accents) | Wizard elder only |
+| Ghost | Translucent Player | Separate gen |
 
-No neon rainbow kits; keep cool stone world so character accents pop.
+Optional future cast energy (not this pass unless budget): Courier, Merchant.
 
-## Roster
+## Magitech note
 
-- Player
-- Guide
-- Builder
-- Tournament Master
+Characters live in cozy fantasy × magical technology. Small modern/social cues OK (hoodies, badges, soft tech accessories) as long as palette and outlines match the frozen environment.
+
+## Roster (Phase D)
+
+- Player  
+- Guide  
+- Builder  
+- Tournament Master  
 - Ghost (translucent Player — no separate generation)
+
+## Gate
+
+Do not spend Phase D gens until a short character direction concept pass is approved (or human green-lights production from a revised prompt set).

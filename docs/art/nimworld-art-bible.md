@@ -1,9 +1,60 @@
 # NimWorld Art Bible
 
-**Status:** Draft complete — awaiting human confirmation (“visual language frozen”) before Phase B  
+**Status:** Environment visual language **FROZEN** (2026-08-01 human review) — visual identity v1.0  
 **Phase A spend:** 8 / 8 generations (PixelLab trial; pixen/pixflux @ 1 gen each)  
+**North star:** `assets/art/concepts/plaza_v01_concept.png`  
 **Style lock:** `assets/art/concepts/style_lock_v01_final.png`  
 **Moodboard:** `assets/moodboard/nimconnect-plaza-moodboard.png`
+
+---
+
+## VISUAL LANGUAGE LOCKED
+
+```text
+VISUAL LANGUAGE LOCKED
+
+✓ Cozy fantasy
+✓ Subtle magitech
+✓ Cyan portal
+✓ Gold crystal
+✓ Warm windows
+✓ Thick outlines
+✓ Painterly pixel rendering
+
+Avoid
+
+✗ Dark gothic
+✗ High fantasy
+✗ Sci-fi
+✗ Neon cyberpunk
+✗ Flat RPG Maker look
+```
+
+Characters are **not** locked yet — environment only.
+
+---
+
+## Freeze decision
+
+Environment style is frozen. Do **not** regenerate plazas or fountain concepts for style discovery.
+
+| Asset | Score | Decision |
+| --- | ---: | --- |
+| Plaza overview | 9.5 | **North star** — composition & mood authority |
+| Style lock | 9.5 | Art Bible style reference |
+| Fountain | 9.5 | Identity lock; Phase B crystal **+10–15% larger** for mobile |
+| Lighting | 9.0 | Keep; push lantern pools to **full warm** in production |
+| Arcade portal | 9.0 | Keep; Phase B FX: particles, thicker glow, slow pulse, optional floating runes |
+| Materials | 8.5 | Keep; **add doors** to materials / prop kit |
+| Characters | 7.5 | **Not frozen** — too generic fantasy RPG; revisit before Phase D |
+
+Remaining effort priority (post-freeze):
+
+1. Characters (weakest link — distinctive NimWorld cast)  
+2. Building variants (Arcade, Arena, Town Hall) with magitech  
+3. Props (benches, lanterns, banners, flowers, crates, signs, **doors**)  
+4. Animated effects (portal, fountain, lantern flicker)  
+5. Optional hero marketing frame: **NimConnect Fountain Plaza** hub composition (fountain + stone ring + benches + flowers + lanterns + trees)
 
 ---
 
@@ -15,84 +66,125 @@ NimWorld is the visual front door to the Nimiq Mini Apps ecosystem. It exists to
 
 The NimWorld Art Bible is the canonical visual reference for the Maestro Mini Apps ecosystem. Future projects such as NimBomber, PlayNimiq, NimConnect visual assets, and new Mini Apps should follow these principles unless a project intentionally establishes its own distinct identity.
 
+## Aesthetic thesis
+
+**Cozy fantasy × subtle magical technology** — not a pure medieval RPG village, and not “crypto neon.”
+
+| Lean into | Avoid |
+| --- | --- |
+| Gold crystal technology (NimConnect) | Generic thatch / wooden tavern clichés |
+| Cyan holographic / energy portals | Every building looking medieval |
+| Soft blue roofs, warm windows, painterly pixels | Empty plazas, cold sterile sci-fi |
+| Clean civic Town Hall | Ornate castle clutter |
+| Marketplace = canvas + scaffolding | Over-finished shop façades this pass |
+
+Think: *I'd actually click this* — cozy enough to linger, magical enough to walk toward Arcade.
+
+## Asset taxonomy (internal)
+
+Prefer this language over a single “Hero Landmark Kit” bucket:
+
+### Icon Assets — define NimWorld
+
+Fountain · Portal · Crystal · Lantern · Window · Roof · (Doors)
+
+### Environment Assets — repeated everywhere
+
+Trees · Flowers · Benches · Barrels/crates · Stone ring / path accents
+
+### Landmark Assets — buildings
+
+Arcade · Arena · Town Hall · Social Club · Marketplace (temporary)
+
+### Character Assets
+
+Player · Guide · Builder · Tournament Master · (Ghost = translucent Player)
+
+---
+
 ## Palette
 
-Derived from Phase A concepts (especially style lock, fountain, arcade portal). Prefer these brand anchors over one-off hues.
+Derived from Phase A concepts (plaza north star, style lock, fountain, arcade portal).
 
 | Role | Hex | Notes |
 | --- | --- | --- |
 | Night sky / deep shadow | `#0a0f24` → `#101040` | Blue-hour base |
 | Cool stone | `#304060` → `#405070` | Plaza masonry |
-| Roof blue | `#203060` → `#2a4068` | Scalloped tiles |
+| Roof blue | `#203060` → `#2a4068` | Soft blue scalloped tiles |
 | Vegetation | `#002010` → `#104010` | Dense evening greens |
 | Fountain water / portal cool | `#307080` → `#3de7ff` | Magical cyan family |
 | Arcade portal core | `#50f0f0` → `#58c4ff` | Instant Arcade cue |
 | Gold crystal / lantern | `#f5a623` → `#f0f000` | NimWorld / NimConnect identity |
-| Warm lantern pool | `#ffc66d` → `#ffe0a0` | Soft ground pools |
-| Outline | `#0c1020` / near-black | Single-color dark outline |
+| Warm lantern pool | `#ffc66d` → `#ffe0a0` | Push to **100% warm** in production |
+| Outline | `#0c1020` / near-black | Thick but clean |
 | Stone highlight | `#5a6890` / warm brass `#b0a080` | Rim & filigree |
 
 **Brand locks (non-negotiable):**
 
 1. Fountain crystal = **gold / warm yellow** (never blue as the hero crystal).  
-2. Arcade portal = **bright cyan**, readable alone.  
-3. Blue-hour evening — cool stone + warm lantern contrast.
+2. Arcade portal = **bright cyan**, readable alone — should almost hypnotize.  
+3. Blue-hour evening — cool stone + **full-warm** lantern contrast.  
+4. Magitech accents on landmarks (holo signs, crystal tech, energy) over pure medieval.
 
 ## Materials
 
 ### Roof
 
-Blue-grey scalloped shingles with dark overlaps (`materials_v01_concept.png`). Occasional weathered wood shingles as secondary. Keep roofs readable at 50% scale.
+Soft blue-grey scalloped shingles (`materials_v01_concept.png`, style lock). Readable at 50%.
 
 ### Stone
 
-Cool grey-blue block masonry with dark mortar and subtle weathering. Brass / warm filigree allowed on Fountain rim only — elsewhere keep stone cool so gold/cyan accents pop.
+Cool grey-blue block masonry; brass/warm filigree OK on Fountain. Buildings frame the plaza — they do not dominate it (`plaza_v01_concept.png`).
 
 ### Vegetation
 
-Rounded dark-green bushes, conical/cypress accents, small pink/gold flower pops. Vegetation frames landmarks; it must not outshine Fountain or Arcade.
+Ivy walls, rounded bushes, flower pops. Frame landmarks; never outshine Fountain / Arcade.
 
 ### Window
 
-Warm gold interior glow by default; cyan-lit slits only on Arcade. Dark muntins; arched civic windows vs small Arcade vents.
+Warm gold interior glow by default; cyan-lit only on Arcade. Warm windows are a style pillar.
+
+### Doors (gap)
+
+Entrances are high-attention. Generate door variants in materials / props (civic clean, Arcade magitech, construction temporary). People always look at entrances.
 
 ## Outline thickness
 
-Single-color dark outline, ~1–2 px at concept resolution. Characters and landmarks need a clear silhouette edge against night stone and sky. Avoid lineless soft edges for production landmarks.
+Thick but clean single-color dark outline (~1–2 px at concept res). Painterly pixel detail inside; silhouette must read on mobile.
 
 ## Shadow style
 
-Soft elliptical contact shadows under characters/props. Landmark cast shadows lean cool (indigo/blue), lantern pools warm. Prefer readable pools over multi-layer soft blur.
+Soft elliptical contact shadows. Landmark casts cool; lantern pools **fully warm**. Prefer readable pools over soft blur stacks.
 
 ## Character scale
 
-Reference: `assets/art/concepts/character_scale_v01_concept.png`
+Reference (provisional only): `assets/art/concepts/character_scale_v01_concept.png` — **not frozen**.
 
-- Chibi / big-head family (~2–3 heads tall in concept art).  
-- Large readable eyes, thick shared outline, upper-left lighting.  
-- Signature colors: Player cyan+gold, Guide teal, Builder yellow hardhat, Tournament Master orange.  
-- **Gap for Phase D:** Phase A sheet is closer to front/3/4 view than pure low top-down Phaser sheets (32×48). Production may ship south-facing idles first if PixelLab sheets cannot match the walk grid in 4 gens — document in Character Bible when generating.
+**Problem:** Reads as generic Hero / Rogue / Builder / Wizard fantasy cast, not NimWorld social roles.
+
+**Target feel:** Slightly shorter, more expressive — between **Stardew × MapleStory × CrossCode**. Distinctive Mini App / social-platform vibes (Guide, Builder, Tournament Master, Courier, Merchant energy) rather than D&D classes.
+
+Full Character Bible rewrite before Phase D spend.
 
 ## Lighting
 
-Blue-hour key: cool ambient sky + warm lantern pools + **gold crystal** hero light + **cyan portal spill**.  
-Do not invert brand lights (no blue hero crystal, no orange Arcade portal).  
-Study path: `lighting_v01` rejected (blue crystal) → `lighting_v02_concept.png` atmosphere keep → final lock in `style_lock_v01_final.png`.
+Authority: plaza + lighting studies + style lock.
+
+- Cool ambient blue-hour  
+- **100% warm** lantern pools  
+- Gold crystal hero light  
+- Cyan portal spill as destination cue  
 
 ## Animation principles
 
-Motion supports atmosphere, not noise:
-
-- Fountain: soft crystal pulse, upward gold sparkles, water ripples.  
-- Arcade portal: looping cyan swirl / energy arcs (dedicated FX asset in Phase B).  
-- Lanterns: gentle idle flicker.  
-- Characters: short idle breathe + walk cycles; Ghost = translucent Player.
+- Fountain: crystal pulse, gold sparkles, water ripples; crystal larger in production  
+- Arcade portal: particles, thicker glow, slow pulse, optional floating runes  
+- Lanterns: gentle flicker  
+- Characters: short idle + walk; Ghost = translucent Player  
 
 ## Camera
 
-Gameplay camera remains the existing Phaser plaza framing.  
-Art generation view: **low top-down / low-isometric 3/4** (Phase A outputs skewed isometric; Phase B production sprites should prefer PixelLab `view: "low top-down"` and readable top-down silhouettes).  
-No UI chrome inside art frames.
+Phaser plaza framing unchanged. Art gen: low top-down / low-isometric 3/4 matching plaza north star. No UI chrome in art frames.
 
 ## Visual hierarchy
 
@@ -101,31 +193,20 @@ No UI chrome inside art frames.
 3. Arena  
 4. Player  
 5. NPCs  
-6. Props  
+6. Props / environment  
 7. Ground  
 
 ## Brand Recognition Test
 
 > If someone sees this asset by itself on X, Discord or GitHub, could they reasonably recognize it as belonging to NimWorld?
 
-Phase A results:
-
-| Concept | Path | Pass? | Notes |
-| --- | --- | --- | --- |
-| Fountain | `concepts/fountain_v01_concept.png` | Yes | Gold crystal identity |
-| Plaza | `concepts/plaza_v01_concept.png` | Yes | Fountain + cyan portal readable |
-| Arcade portal | `concepts/arcade_portal_v01_concept.png` | Yes | Cyan alone is Arcade |
-| Materials | `concepts/materials_v01_concept.png` | Yes | Support sheet |
-| Character scale | `concepts/character_scale_v01_concept.png` | Yes | Family match |
-| Lighting v01 | `rejected/lighting_v01_blue_crystal_rejected.png` | No | Blue crystal breaks brand |
-| Lighting v02 | `concepts/lighting_v02_concept.png` | Partial | Atmosphere ok; crystal still weak |
-| Style lock | `concepts/style_lock_v01_final.png` | Yes | Gold + cyan locked together |
+Frozen environment anchors: Fountain (gold crystal) + Arcade portal (cyan) + plaza composition.
 
 ## Emotional Test
 
 > Does this asset create curiosity? Would a player naturally want to walk toward it?
 
-Fountain, Arcade portal, plaza overview, and style lock: **Yes**. Rejected lighting v01: curiosity ok, brand fail.
+Plaza north star is the bar: *I'd actually click this.*
 
 ## Asset Review Checklist
 
@@ -138,43 +219,51 @@ Production-ready only if all yes:
 - Recognizable without text  
 - Consistent with the existing palette  
 - Makes me want to click or approach it  
+- Feels cozy fantasy × magitech (not generic medieval)
 
 ## Do / Don’t
 
 ### Do
 
-- Lead with gold crystal Fountain and cyan Arcade portal (`style_lock_v01_final.png`, `fountain_v01_concept.png`, `arcade_portal_v01_concept.png`).  
-- Keep blue-hour cool stone + warm lantern contrast.  
-- Reuse materials language from `materials_v01_concept.png`.  
-- Keep rejected concepts in `assets/art/rejected/` for future districts.  
-- Prefer shared assets across Mini Apps.
+- Treat `plaza_v01_concept.png` as composition north star.  
+- Treat `style_lock_v01_final.png` as materials / outline / lighting lock.  
+- Keep Fountain + cyan portal as brand icons.  
+- Inject subtle modernity / magitech on landmarks.  
+- Generate doors; warm lanterns fully; portal FX that hypnotize.  
+- Keep rejected art in `assets/art/rejected/`.
 
 ### Don’t
 
-- Spend Phase B gens reinventing style (minor refinement only after freeze).  
-- Make the hero crystal blue/purple.  
-- Spend credits on ground tilesets or PixelLab UI chrome this pass.  
-- Let Marketplace soak iterations (temporary construction).  
-- Delete rejected art.  
-- Put UI panels, chat docks, or text labels into landmark art.
+- Regenerate plaza / fountain for style fishing.  
+- Default every building to medieval wood signs.  
+- Ship the Phase A character sheet as final family.  
+- Spend credits on ground tilesets or PixelLab UI this pass.  
+- Let Marketplace soak iterations.  
+- Delete rejected art.
 
 ## UI integration note
 
-Vue / Nimiq UI chrome stays outside PixelLab spend. Art Pass B only replaces selected Phaser textures via optional overrides; procedural atlas remains fallback (especially ground). Direction for later UI theming: dark navy panels, cyan/gold accents echoing Fountain + Arcade — not generated here.
+Vue / Nimiq UI stays outside PixelLab spend. Optional Phaser texture overrides; procedural atlas remains fallback (especially ground). Later UI theming may echo navy + cyan/gold — not generated here.
+
+## Missing hero marketing frame
+
+Still desired (not style discovery — marketing / hub identity):
+
+**NimConnect Fountain Plaza** as one composition:
+
+Fountain + stone ring + benches + flowers + lanterns + trees  
+
+Use for screenshots / share cards. Generate when spending resumes (count against props/reserve or a dedicated 1-gen slot — do not reopen style search).
 
 ## Phase A concept index
 
-| # | File | Role |
-| --- | --- | --- |
-| 1 | `assets/art/concepts/fountain_v01_concept.png` | Hero Fountain identity |
-| 2 | `assets/art/concepts/plaza_v01_concept.png` | Plaza overview |
-| 3 | `assets/art/concepts/arcade_portal_v01_concept.png` | Arcade + cyan portal |
-| 4 | `assets/art/concepts/materials_v01_concept.png` | Materials sheet |
-| 5 | `assets/art/concepts/character_scale_v01_concept.png` | Character scale |
-| 6→7 | `lighting_v01` rejected → `lighting_v02_concept.png` | Lighting refine |
-| 8 | `assets/art/concepts/style_lock_v01_final.png` | **Style freeze frame** |
-
-## Freeze gate
-
-**Do not start Phase B landmark production until a human confirms: “visual language frozen.”**  
-Minor refinement after freeze is allowed; reinventing the style is not.
+| # | File | Role | Freeze |
+| --- | --- | --- | --- |
+| 1 | `concepts/fountain_v01_concept.png` | Hero Fountain | Frozen (crystal +10–15% in prod) |
+| 2 | `concepts/plaza_v01_concept.png` | **North star** | Frozen |
+| 3 | `concepts/arcade_portal_v01_concept.png` | Arcade portal | Frozen (FX push in B) |
+| 4 | `concepts/materials_v01_concept.png` | Materials | Frozen (+ doors later) |
+| 5 | `concepts/character_scale_v01_concept.png` | Character scale | **Not frozen** |
+| 6 | `rejected/lighting_v01_blue_crystal_rejected.png` | Lighting fail | Rejected |
+| 7 | `concepts/lighting_v02_concept.png` | Lighting refine | Frozen (warmer lamps in prod) |
+| 8 | `concepts/style_lock_v01_final.png` | Style lock | Frozen |

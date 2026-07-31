@@ -22,11 +22,22 @@ Examples:
 | Folder | Purpose |
 | --- | --- |
 | `concepts/` | Phase A Art Bible style studies |
-| `landmarks/` | Hero buildings (Fountain, Arcade, Arena, …) |
-| `props/` | Shared reusable props |
-| `characters/` | Character kit sheets / sprites |
-| `effects/` | Portal FX and similar |
+| `landmarks/` | Landmark Assets (buildings + fountain production) |
+| `props/` | Environment Assets (trees, benches, flowers, doors, …) |
+| `characters/` | Character Assets |
+| `effects/` | Animated Icon FX (portal, crystal pulse helpers) |
 | `rejected/` | Failed reviews — never delete |
+
+## Taxonomy (prefer over “Hero Landmark Kit”)
+
+| Bucket | Examples |
+| --- | --- |
+| **Icon Assets** | Fountain, Portal, Crystal, Lantern, Window, Roof, Doors |
+| **Environment Assets** | Trees, Flowers, Benches, Barrels/crates, stone ring accents |
+| **Landmark Assets** | Arcade, Arena, Town Hall, Social Club, Marketplace |
+| **Character Assets** | Player, Guide, Builder, Tournament Master |
+
+Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 
 ## Credit log
 
