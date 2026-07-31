@@ -1,0 +1,17 @@
+{
+  "name": "nimworld",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @nimworld/web",
+    "build": "npm run build -w @nimworld/app-manifest && npm run build -w @nimworld/web",
+    "test": "npm run test -w @nimworld/app-manifest && npm run test -w @nimworld/web",
+    "preview": "npm run preview -w @nimworld/web"
+  },
+  "license": "MIT"
+}

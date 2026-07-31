@@ -1,0 +1,82 @@
+@import 'tailwindcss';
+
+:root {
+  --nw-bg: #0b1026;
+  --nw-panel: rgba(16, 22, 48, 0.88);
+  --nw-panel-border: rgba(180, 200, 255, 0.16);
+  --nw-text: #f4f6ff;
+  --nw-muted: #a8b3d9;
+  --nw-gold: #f5a623;
+  --nw-cyan: #58c4ff;
+  --nw-purple: #9b7bff;
+  --nw-green: #4fd1a5;
+  --nw-pink: #ff6b8a;
+  --nw-font-display: 'Sora', system-ui, sans-serif;
+  --nw-font-body: 'Mulish', system-ui, sans-serif;
+  color: var(--nw-text);
+  font-family: var(--nw-font-body);
+  background: var(--nw-bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(1200px 800px at 50% 20%, #18224a 0%, var(--nw-bg) 60%);
+}
+
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--nw-font-display);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.nw-panel {
+  background: var(--nw-panel);
+  border: 1px solid var(--nw-panel-border);
+  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.nw-btn {
+  border: 0;
+  border-radius: 14px;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms ease, filter 140ms ease;
+}
+
+.nw-btn:active {
+  transform: scale(0.98);
+}
+
+.nw-btn-primary {
+  background: linear-gradient(135deg, var(--nw-gold), #ff8a3d);
+  color: #1a1204;
+}
+
+.nw-btn-secondary {
+  background: rgba(88, 196, 255, 0.16);
+  color: var(--nw-text);
+  border: 1px solid rgba(88, 196, 255, 0.35);
+}
+
+.nw-btn-ghost {
+  background: transparent;
+  color: var(--nw-muted);
+}
