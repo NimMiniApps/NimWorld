@@ -18,8 +18,10 @@ import {
   WORLD,
   type PlazaLocation,
 } from '@/game/world/locations'
-import { PATH_TILE_SIZE } from '@/game/world/pathAutotile'
-import { buildPlazaPathPlacements } from '@/game/world/plazaPathMap'
+import { TERRAIN_TILESET_KEY } from '@/game/assets/loadTerrainTileset'
+import { buildPlazaTerrainGrid } from '@/game/world/plazaTerrainMap'
+import { resolveTerrainLayer } from '@/game/world/terrainResolver'
+import { TERRAIN_TILE } from '@/game/world/terrainTypes'
 
 export interface PlazaSceneData {
   bridge: WorldBridge
@@ -190,11 +192,25 @@ export class PlazaScene extends Phaser.Scene {
   }
 
   private paintEnvironment() {
-    // Grass base
-    for (let y = 0; y < WORLD.height; y += 32) {
-      for (let x = 0; x < WORLD.width; x += 32) {
-        this.add.image(x + 16, y + 16, 'tile-grass').setDepth(0)
-      }
+    // Opaque Wang terrain covering all cells (grass + stone transitions).
+    // Phaser ARRAY_2D: empty is -1 only; index 0 is a real sheet frame (firstgid 0).
+    const indexes = resolveTerrainLayer(buildPlazaTerrainGrid())
+    const map = this.make.tilemap({
+      data: indexes,
+      tileWidth: TERRAIN_TILE,
+      tileHeight: TERRAIN_TILE,
+    })
+    const tileset = map.addTilesetImage(
+      TERRAIN_TILESET_KEY,
+      TERRAIN_TILESET_KEY,
+      TERRAIN_TILE,
+      TERRAIN_TILE,
+      0,
+      0,
+    )
+    if (tileset) {
+      const layer = map.createLayer(0, tileset, 0, 0)
+      layer?.setDepth(0)
     }
 
     // Rim water only (ponds / channels) — not a solid frame everywhere
@@ -207,27 +223,6 @@ export class PlazaScene extends Phaser.Scene {
     for (const [x, y] of waterBand) {
       const tile = this.add.image(x, y, 'tile-water').setDepth(1)
       this.waterTiles.push(tile)
-    }
-
-    // Autotiled stone-on-grass paths (organic routes + landings).
-    // Tiles include grass edges so paths feel embedded, not stamped on.
-    const pathPlacements = buildPlazaPathPlacements()
-    for (const cell of pathPlacements) {
-      const key = this.textures.exists(cell.key) ? cell.key : 'tile-path'
-      const x = cell.col * PATH_TILE_SIZE + PATH_TILE_SIZE / 2
-      const y = cell.row * PATH_TILE_SIZE + PATH_TILE_SIZE / 2
-      this.add.image(x, y, key).setDepth(3)
-    }
-
-    // Compact fountain stone ring on top of forecourt (identity pad)
-    for (let y = PLAZA_CENTER.y - 54; y < PLAZA_CENTER.y + 58; y += 16) {
-      for (let x = PLAZA_CENTER.x - 54; x < PLAZA_CENTER.x + 54; x += 16) {
-        const dx = (x - PLAZA_CENTER.x) / 50
-        const dy = (y - PLAZA_CENTER.y) / 46
-        if (dx * dx + dy * dy < 1) {
-          this.add.image(x, y, 'tile-stone').setDepth(3.2)
-        }
-      }
     }
 
     // Soft blue-hour vignette

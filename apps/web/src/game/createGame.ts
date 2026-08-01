@@ -4,7 +4,7 @@ import type { WorldPosition } from '@/domain/types'
 import type { WorldBridge } from '@/game/bridge/WorldBridge'
 import { generatePlazaAtlas } from '@/game/assets/generatePlazaAtlas'
 import { loadArtOverrides } from '@/game/assets/loadArtOverrides'
-import { loadPathTiles } from '@/game/assets/loadPathTiles'
+import { loadTerrainTileset } from '@/game/assets/loadTerrainTileset'
 import { PlazaScene } from '@/game/scenes/PlazaScene'
 import { WORLD } from '@/game/world/locations'
 
@@ -15,7 +15,7 @@ class BootScene extends Phaser.Scene {
 
   preload() {
     loadArtOverrides(this)
-    loadPathTiles(this)
+    loadTerrainTileset(this)
   }
 
   create() {
