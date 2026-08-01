@@ -50,7 +50,8 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | Landmark kit | 18 | 8 | + arcade v03 true-alpha |
 | Character lock | — | 0 | V4 locked from prior exploration |
 | C Props | 8 | 6 | tree/bush/crates/bench/lantern + door candidate |
-| Path tiles (maps) | — | ~20–40 | `create_path_tiles` stone-on-grass wired |
+| Path tiles (maps) | — | ~20–40 | `path_stone_v01` deprecated (edge QA fail) |
+| Plaza Wang tiles | — | 4 gens | `plaza_stone_wang_v01` approved (attempt 1 + palette remap) |
 | D Characters | 5 | 5 | Player/Guide/Builder/TM/Courier + walk 4-dir |
 | Reserve | 2 | | |
 | **Total** | was 40 trial | ~60+ | Tier 1: 2000 gens |
@@ -95,6 +96,9 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | `characters/courier_sheet_v01.png` | `char-npc-c` | final | B |
 | `characters/tournament_master_sheet_v01.png` | `char-npc-d` | final | B |
 | `characters/builder_sheet_v01.png` | `char-npc-e` | final | B |
+| `tiles/plaza_stone_wang_v01/tileset.png` | `terrain-plaza-wang` (Task 6) | approved | terrain |
+| `tiles/path_stone_v01/*` | `path-auto-*` | deprecated | terrain |
+| `rejected/path_stone_v01/*` | — | rejected | terrain (transparent edges + `#1c1e25` borders) |
 
 Character sheets: 4×4 @ 48×48 (idle + 3 walk × 4 dirs). See `docs/art/character-bible.md`.
 
