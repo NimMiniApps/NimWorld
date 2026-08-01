@@ -552,7 +552,7 @@ export class PlazaScene extends Phaser.Scene {
       if (body) body.enable = false
 
       const label = this.add
-        .text(home.x, home.y - 36, actor.label, {
+        .text(home.x, home.y - 40, actor.label, {
           fontFamily: 'Mulish, sans-serif',
           fontSize: '10px',
           color: isGhost ? '#ffe29a' : '#d7deff',

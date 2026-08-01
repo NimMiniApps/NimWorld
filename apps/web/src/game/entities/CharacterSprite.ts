@@ -21,8 +21,11 @@ export class CharacterSprite {
     this.sheet = sheet
     this.sprite = scene.physics.add.sprite(x, y, sheet, 0)
     this.sprite.setCollideWorldBounds(true)
-    this.sprite.setSize(14, 12)
-    this.sprite.setOffset(9, 32)
+    const fw = this.sprite.frame.width
+    const fh = this.sprite.frame.height
+    // Foot-centered body scales with sheet cell size (32×48 procedural or 48×48 V4).
+    this.sprite.setSize(Math.round(fw * 0.44), Math.round(fh * 0.25))
+    this.sprite.setOffset(Math.round(fw * 0.28), Math.round(fh * 0.67))
     if (ghost) this.sprite.setAlpha(0.62)
     this.playIdle()
   }

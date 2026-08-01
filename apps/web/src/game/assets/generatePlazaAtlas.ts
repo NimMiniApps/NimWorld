@@ -811,6 +811,14 @@ export function generatePlazaAtlas(scene: Phaser.Scene) {
   registerCharacterAnims(scene)
 }
 
+function characterFrameSize(texture: Phaser.Textures.Texture): { fw: number; fh: number } {
+  const src = texture.getSourceImage() as { width?: number; height?: number }
+  const w = src.width ?? 128
+  const h = src.height ?? 192
+  // Sheets are always 4×4 cells (procedural 32×48 on 128×192, V4 PixelLab 48×48 on 192×192).
+  return { fw: Math.round(w / 4), fh: Math.round(h / 4) }
+}
+
 function registerCharacterAnims(scene: Phaser.Scene) {
   const sheets = [
     'char-player',
@@ -825,11 +833,12 @@ function registerCharacterAnims(scene: Phaser.Scene) {
 
   for (const sheet of sheets) {
     const texture = scene.textures.get(sheet)
+    const { fw, fh } = characterFrameSize(texture)
     if (texture.frameTotal <= 1) {
       for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 4; col++) {
           const index = row * 4 + col
-          texture.add(index, 0, col * 32, row * 48, 32, 48)
+          texture.add(index, 0, col * fw, row * fh, fw, fh)
         }
       }
     }

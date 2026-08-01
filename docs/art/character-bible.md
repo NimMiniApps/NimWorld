@@ -76,11 +76,24 @@ Shared small **gold hex/badge** accents OK as magitech family cue (V4).
 - **Builder** — yellow hardhat, utility gear — **expansion mascot** energy (“Builder Bob” candidate)  
 - **Tournament Master** — mentor/sport energy (not mage) — orange/red accents  
 
+### Production sheets (V4, in-game)
+
+| Role | Phaser key | Sheet | PixelLab id |
+| --- | --- | --- | --- |
+| Player | `char-player` | `characters/player_sheet_v01.png` | `2bad176b-7b7d-4b76-aca5-da23a4e4330f` |
+| Guide | `char-npc-a` | `characters/guide_sheet_v01.png` | `5dd5f83e-b4da-46c8-a529-17e43f5effb4` |
+| Courier | `char-npc-c` | `characters/courier_sheet_v01.png` | `aae9c367-f4bb-448a-9f18-ea4966414b9e` |
+| Tournament Master | `char-npc-d` | `characters/tournament_master_sheet_v01.png` | `70bb13ca-33d1-444e-af07-43fd62479806` |
+| Builder | `char-npc-e` | `characters/builder_sheet_v01.png` | `123beb71-e7d2-4647-bea7-5275d754cf9c` |
+
+Sheet layout: 4×4 @ **48×48** (192×192 PNG). Rows = south, west, east, north. Cols = idle, walk0, walk1, walk2.  
+Gardener (`char-npc-b`) still procedural until a V4 gardener sheet exists.
+
 ### Add next (variants, not style search)
 
-- **Courier / messenger / delivery rider** — always walking; makes plaza feel alive  
 - Gardener, Merchant (later)  
 - Builder variations at construction sites  
+- Role anims: wave, hammer, etc. (idle + walk shipped first)
 
 ### Ghost
 
@@ -88,11 +101,11 @@ Translucent Player — no separate generation.
 
 ## Idle pose
 
-Relaxed, approachable, social. Wave-ready for Guide.
+Relaxed, approachable, social. Wave-ready for Guide. Current sheets use rotation idle; breathing-idle optional later.
 
 ## Walk cycle
 
-Prefer Phaser sheet: 4 dirs × 4 frames @ 32×48. If PixelLab cannot match budget, south-facing idle first + procedural walk fallback.
+Phaser sheet: 4 dirs × (idle + 3 walk frames) @ **48×48** V4 (procedural fallback remains 32×48).
 
 ## Priority animations (before more style gens)
 

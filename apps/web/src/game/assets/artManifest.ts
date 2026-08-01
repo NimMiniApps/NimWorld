@@ -14,7 +14,13 @@ export const ART_OVERRIDES: Record<string, string | null> = {
   'prop-crates': 'props/crates_v01_final.png',
   'prop-bench': 'props/bench_v01_final.png',
   'prop-lantern': 'props/lantern_v01_final.png',
-  // chars filled as approved
+  // V4 character sheets (48×48 cells, 4 dirs × idle+3 walk)
+  'char-player': 'characters/player_sheet_v01.png',
+  'char-npc-a': 'characters/guide_sheet_v01.png',
+  // Gardener keeps procedural sheet until a V4 gardener is produced.
+  'char-npc-c': 'characters/courier_sheet_v01.png',
+  'char-npc-d': 'characters/tournament_master_sheet_v01.png',
+  'char-npc-e': 'characters/builder_sheet_v01.png',
 }
 
 /** Target display size so PixelLab canvases match plaza layout footprint. */

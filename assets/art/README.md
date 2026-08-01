@@ -50,10 +50,10 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | Landmark kit | 18 | 8 | + arcade v03 true-alpha |
 | Character lock | — | 0 | V4 locked from prior exploration |
 | C Props | 8 | 6 | tree/bush/crates/bench/lantern + door candidate |
-| Path tiles (maps) | — | ~20–40 | in progress `create_path_tiles` |
-| D Characters | 4 | | |
+| Path tiles (maps) | — | ~20–40 | `create_path_tiles` stone-on-grass wired |
+| D Characters | 5 | 5 | Player/Guide/Builder/TM/Courier + walk 4-dir |
 | Reserve | 2 | | |
-| **Total** | was 40 trial | ~35+ | Tier 1: 2000 gens |
+| **Total** | was 40 trial | ~60+ | Tier 1: 2000 gens |
 
 ## Phase A concepts
 
@@ -90,6 +90,13 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | `effects/arcade_portal_cabinet_v01_candidate.png` | — | candidate | B |
 | `rejected/arena_v01_house_rejected.png` | — | rejected | B |
 | `concepts/characters_v04_citizen_refine.png` | — | concept | dir |
+| `characters/player_sheet_v01.png` | `char-player` | final | B |
+| `characters/guide_sheet_v01.png` | `char-npc-a` | final | B |
+| `characters/courier_sheet_v01.png` | `char-npc-c` | final | B |
+| `characters/tournament_master_sheet_v01.png` | `char-npc-d` | final | B |
+| `characters/builder_sheet_v01.png` | `char-npc-e` | final | B |
+
+Character sheets: 4×4 @ 48×48 (idle + 3 walk × 4 dirs). See `docs/art/character-bible.md`.
 
 Approved files are mirrored under `apps/web/public/assets/art/` for Phaser `load.image`.
 
