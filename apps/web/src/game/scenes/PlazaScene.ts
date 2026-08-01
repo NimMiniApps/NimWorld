@@ -18,6 +18,8 @@ import {
   WORLD,
   type PlazaLocation,
 } from '@/game/world/locations'
+import { PATH_TILE_SIZE } from '@/game/world/pathAutotile'
+import { buildPlazaPathPlacements } from '@/game/world/plazaPathMap'
 
 export interface PlazaSceneData {
   bridge: WorldBridge
@@ -207,49 +209,24 @@ export class PlazaScene extends Phaser.Scene {
       this.waterTiles.push(tile)
     }
 
-    // Fountain stone ring only (not a giant paved square)
-    for (let y = PLAZA_CENTER.y - 70; y < PLAZA_CENTER.y + 80; y += 16) {
-      for (let x = PLAZA_CENTER.x - 70; x < PLAZA_CENTER.x + 70; x += 16) {
-        const dx = (x - PLAZA_CENTER.x) / 68
-        const dy = (y - PLAZA_CENTER.y) / 62
+    // Autotiled stone-on-grass paths (organic routes + landings).
+    // Tiles include grass edges so paths feel embedded, not stamped on.
+    const pathPlacements = buildPlazaPathPlacements()
+    for (const cell of pathPlacements) {
+      const key = this.textures.exists(cell.key) ? cell.key : 'tile-path'
+      const x = cell.col * PATH_TILE_SIZE + PATH_TILE_SIZE / 2
+      const y = cell.row * PATH_TILE_SIZE + PATH_TILE_SIZE / 2
+      this.add.image(x, y, key).setDepth(3)
+    }
+
+    // Compact fountain stone ring on top of forecourt (identity pad)
+    for (let y = PLAZA_CENTER.y - 54; y < PLAZA_CENTER.y + 58; y += 16) {
+      for (let x = PLAZA_CENTER.x - 54; x < PLAZA_CENTER.x + 54; x += 16) {
+        const dx = (x - PLAZA_CENTER.x) / 50
+        const dy = (y - PLAZA_CENTER.y) / 46
         if (dx * dx + dy * dy < 1) {
-          this.add.image(x, y, 'tile-stone').setDepth(2)
+          this.add.image(x, y, 'tile-stone').setDepth(3.2)
         }
-      }
-    }
-
-    // Stone path ribbons spawn → fountain → each building
-    const pathPoints = [
-      ...this.curvePath(SPAWN_POINT.x, SPAWN_POINT.y, PLAZA_CENTER.x, PLAZA_CENTER.y + 20, 8),
-      ...this.curvePath(PLAZA_CENTER.x, PLAZA_CENTER.y, 478, 190, 11),
-      ...this.curvePath(PLAZA_CENTER.x - 20, PLAZA_CENTER.y, 220, 270, 11, -36),
-      ...this.curvePath(PLAZA_CENTER.x + 20, PLAZA_CENTER.y, 750, 270, 11, 36),
-      ...this.curvePath(PLAZA_CENTER.x - 10, PLAZA_CENTER.y + 20, 250, 510, 11, 28),
-      ...this.curvePath(PLAZA_CENTER.x + 10, PLAZA_CENTER.y + 20, 710, 520, 11, -28),
-    ]
-    const seen = new Set<string>()
-    for (const [x, y] of pathPoints) {
-      const key = `${x},${y}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      this.add.image(x, y, 'tile-path').setDepth(3).setAlpha(0.96)
-    }
-
-    // Flower / grass pockets every stretch of path (break identical tiles)
-    for (const [fx, fy] of [
-      [300, 340],
-      [660, 350],
-      [420, 500],
-      [560, 200],
-      [360, 220],
-      [600, 520],
-      [320, 560],
-      [700, 320],
-    ] as const) {
-      for (let i = 0; i < 4; i++) {
-        this.add
-          .image(fx + (i % 2) * 16 - 8, fy + Math.floor(i / 2) * 16, 'tile-grass')
-          .setDepth(3.5)
       }
     }
 
@@ -270,28 +247,6 @@ export class PlazaScene extends Phaser.Scene {
       for (let xx = x; xx < x + w; xx += 32) {
         pts.push([xx + 16, yy + 16])
       }
-    }
-    return pts
-  }
-
-  private curvePath(
-    x0: number,
-    y0: number,
-    x1: number,
-    y1: number,
-    steps: number,
-    bulge = 0,
-  ): Array<[number, number]> {
-    const pts: Array<[number, number]> = []
-    for (let i = 0; i <= steps; i++) {
-      const t = i / steps
-      const xc = (x0 + x1) / 2 + bulge
-      const yc = (y0 + y1) / 2 - Math.abs(bulge) * 0.25
-      const x = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * xc + t * t * x1
-      const y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * yc + t * t * y1
-      pts.push([Math.round(x / 16) * 16, Math.round(y / 16) * 16])
-      pts.push([Math.round(x / 16) * 16 + 16, Math.round(y / 16) * 16])
-      pts.push([Math.round(x / 16) * 16 - 16, Math.round(y / 16) * 16])
     }
     return pts
   }
