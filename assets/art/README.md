@@ -73,8 +73,15 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | File | Phaser key | Status | Phase |
 | --- | --- | --- | --- |
 | `landmarks/fountain_v02_final.png` | `fountain-base` | final | B |
-| `landmarks/arcade_v01_final.png` | `building-arcade` | final | B |
+| `landmarks/arcade_v03_final.png` | `building-arcade` | final | B |
+| `landmarks/arcade_v01_final.png` | — | superseded | B |
 | `rejected/arcade_v02_checkerboard_rejected.png` | — | rejected | B (baked checkerboard, 0% alpha) |
+| `props/tree_v01_final.png` | `prop-tree` | final | C |
+| `props/bush_v01_final.png` | `prop-bush` | final | C |
+| `props/crates_v01_final.png` | `prop-crates` | final | C |
+| `props/bench_v01_final.png` | `prop-bench` | final | C |
+| `props/lantern_v01_final.png` | `prop-lantern` | final | C |
+| `props/door_v01_candidate.png` | — | candidate | C |
 | `landmarks/arena_v02_final.png` | `building-arena` | final | B |
 | `landmarks/townhall_v01_final.png` | `building-townhall` | final | B |
 | `landmarks/social_v01_final.png` | `building-social` | final | B |
