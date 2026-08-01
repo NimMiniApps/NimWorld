@@ -30,20 +30,26 @@ function stampDisk(
   }
 }
 
-function stampRect(
+/**
+ * Stamp a rectangular pad in cell space, centered on (centerCol, centerRow).
+ * `width`/`height` are inclusive cell counts (must be ≥ 1).
+ */
+function stampLandingPad(
   grid: TerrainCell[][],
-  col0: number,
-  row0: number,
-  col1: number,
-  row1: number,
+  centerCol: number,
+  centerRow: number,
+  width: number,
+  height: number,
   value: TerrainCell,
 ): void {
-  const minC = Math.min(col0, col1)
-  const maxC = Math.max(col0, col1)
-  const minR = Math.min(row0, row1)
-  const maxR = Math.max(row0, row1)
-  for (let r = minR; r <= maxR; r++) {
-    for (let c = minC; c <= maxC; c++) {
+  const halfW = Math.floor((width - 1) / 2)
+  const halfH = Math.floor((height - 1) / 2)
+  const col0 = centerCol - halfW
+  const row0 = centerRow - halfH
+  const col1 = col0 + width - 1
+  const row1 = row0 + height - 1
+  for (let r = row0; r <= row1; r++) {
+    for (let c = col0; c <= col1; c++) {
       if (r < 0 || c < 0 || r >= TERRAIN_ROWS || c >= TERRAIN_COLS) continue
       grid[r]![c] = value
     }
@@ -153,7 +159,7 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
     22,
   )
 
-  // Arcade — north, larger entrance plaza
+  // Arcade — north, largest entrance pad (~5×3)
   stampCurve(
     grid,
     fountain.x,
@@ -165,17 +171,12 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
     TERRAIN_PLAZA,
     26,
   )
-  stampRect(
-    grid,
-    toCell(arcade.x - 36, arcade.y + 20).c,
-    toCell(arcade.x - 36, arcade.y + 20).r,
-    toCell(arcade.x + 40, arcade.y + 52).c,
-    toCell(arcade.x + 40, arcade.y + 52).r,
-    TERRAIN_ENTRANCE,
-  )
-  stampDisk(grid, toCell(arcade.x, arcade.y + 40).c, toCell(arcade.x, arcade.y + 40).r, 2, TERRAIN_ENTRANCE)
+  {
+    const pad = toCell(arcade.x, arcade.y + 40)
+    stampLandingPad(grid, pad.c, pad.r, 5, 3, TERRAIN_ENTRANCE)
+  }
 
-  // Arena — NW
+  // Arena — NW, broader formal pad (~4×3)
   stampCurve(
     grid,
     fountain.x - 16,
@@ -187,23 +188,12 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
     TERRAIN_PLAZA,
     24,
   )
-  stampRect(
-    grid,
-    toCell(arena.x - 20, arena.y + 18).c,
-    toCell(arena.x - 20, arena.y + 18).r,
-    toCell(arena.x + 36, arena.y + 48).c,
-    toCell(arena.x + 36, arena.y + 48).r,
-    TERRAIN_ENTRANCE,
-  )
-  stampDisk(
-    grid,
-    toCell(arena.x + 8, arena.y + 34).c,
-    toCell(arena.x + 8, arena.y + 34).r,
-    2,
-    TERRAIN_ENTRANCE,
-  )
+  {
+    const pad = toCell(arena.x + 8, arena.y + 34)
+    stampLandingPad(grid, pad.c, pad.r, 4, 3, TERRAIN_ENTRANCE)
+  }
 
-  // Marketplace — NE, construction approach
+  // Marketplace — NE, modest construction pad (~2×2)
   stampCurve(
     grid,
     fountain.x + 18,
@@ -215,15 +205,12 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
     TERRAIN_PLAZA,
     24,
   )
-  stampDisk(
-    grid,
-    toCell(market.x - 4, market.y + 36).c,
-    toCell(market.x - 4, market.y + 36).r,
-    1,
-    TERRAIN_CONSTRUCTION,
-  )
+  {
+    const pad = toCell(market.x - 4, market.y + 36)
+    stampLandingPad(grid, pad.c, pad.r, 2, 2, TERRAIN_CONSTRUCTION)
+  }
 
-  // Social Club — SW
+  // Social Club — SW, smaller warmer pad (~3×2)
   stampCurve(
     grid,
     fountain.x - 8,
@@ -235,15 +222,12 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
     TERRAIN_PLAZA,
     24,
   )
-  stampDisk(
-    grid,
-    toCell(social.x + 4, social.y - 8).c,
-    toCell(social.x + 4, social.y - 8).r,
-    1,
-    TERRAIN_ENTRANCE,
-  )
+  {
+    const pad = toCell(social.x + 4, social.y - 8)
+    stampLandingPad(grid, pad.c, pad.r, 3, 2, TERRAIN_ENTRANCE)
+  }
 
-  // Town Hall — SE
+  // Town Hall — SE, clean civic pad (~3×3)
   stampCurve(
     grid,
     fountain.x + 10,
@@ -255,13 +239,10 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
     TERRAIN_PLAZA,
     24,
   )
-  stampDisk(
-    grid,
-    toCell(town.x - 6, town.y - 10).c,
-    toCell(town.x - 6, town.y - 10).r,
-    1,
-    TERRAIN_ENTRANCE,
-  )
+  {
+    const pad = toCell(town.x - 6, town.y - 10)
+    stampLandingPad(grid, pad.c, pad.r, 3, 3, TERRAIN_ENTRANCE)
+  }
 
   return grid
 }

@@ -51,6 +51,26 @@ function findLandingNear(
   return null
 }
 
+/** Count cells of a given kind in a square around a world-space anchor. */
+function countKindNear(
+  grid: TerrainCell[][],
+  nearCol: number,
+  nearRow: number,
+  kind: number,
+  radius = 4,
+): number {
+  let n = 0
+  for (let dr = -radius; dr <= radius; dr++) {
+    for (let dc = -radius; dc <= radius; dc++) {
+      const r = nearRow + dr
+      const c = nearCol + dc
+      if (r < 0 || c < 0 || r >= grid.length || c >= grid[0]!.length) continue
+      if (grid[r]![c] === kind) n++
+    }
+  }
+  return n
+}
+
 describe('plazaTerrainMap', () => {
   it('builds a TERRAIN_ROWS × TERRAIN_COLS semantic grid', () => {
     const grid = buildPlazaTerrainGrid()
@@ -76,7 +96,7 @@ describe('plazaTerrainMap', () => {
       { id: 'arena', yBias: 36, kinds: [TERRAIN_ENTRANCE] },
       { id: 'town-hall', yBias: 0, kinds: [TERRAIN_ENTRANCE] },
       { id: 'social-club', yBias: 0, kinds: [TERRAIN_ENTRANCE] },
-      { id: 'marketplace', yBias: 36, kinds: [TERRAIN_CONSTRUCTION, TERRAIN_ENTRANCE] },
+      { id: 'marketplace', yBias: 36, kinds: [TERRAIN_CONSTRUCTION] },
     ]
 
     for (const { id, yBias, kinds } of landings) {
@@ -85,6 +105,31 @@ describe('plazaTerrainMap', () => {
       const landing = findLandingNear(grid, near.c, near.r, new Set(kinds))
       expect(landing, `expected landing near ${id}`).not.toBeNull()
       expect(reachable.has(`${landing!.c},${landing!.r}`), `${id} landing reachable`).toBe(true)
+    }
+  })
+
+  it('gives each landmark a landing pad sized for its role', () => {
+    const grid = buildPlazaTerrainGrid()
+
+    // Footprints clearly larger than a lone disk r=1–2 (5 / 12 cells).
+    const regions: Array<{
+      id: string
+      yBias: number
+      kind: number
+      minCells: number
+    }> = [
+      { id: 'arcade', yBias: 36, kind: TERRAIN_ENTRANCE, minCells: 15 }, // ~5×3
+      { id: 'arena', yBias: 36, kind: TERRAIN_ENTRANCE, minCells: 12 }, // ~4×3
+      { id: 'town-hall', yBias: 0, kind: TERRAIN_ENTRANCE, minCells: 9 }, // ~3×3
+      { id: 'social-club', yBias: 0, kind: TERRAIN_ENTRANCE, minCells: 6 }, // ~3×2
+      { id: 'marketplace', yBias: 36, kind: TERRAIN_CONSTRUCTION, minCells: 4 }, // ~2×2
+    ]
+
+    for (const { id, yBias, kind, minCells } of regions) {
+      const loc = LOCATIONS.find((l) => l.id === id)!
+      const near = toCell(loc.x, loc.y + yBias)
+      const count = countKindNear(grid, near.c, near.r, kind)
+      expect(count, `${id} landing cells`).toBeGreaterThanOrEqual(minCells)
     }
   })
 
