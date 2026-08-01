@@ -50,7 +50,7 @@ describe('inspectTileRgba', () => {
     expect(result.reasons.some((r) => /transparent/i.test(r))).toBe(true)
   })
 
-  it('rejects dark frame (near-black opaque edge)', () => {
+  it('rejects baked near-neutral dark edge (#1c1e25 class)', () => {
     const rgba = makeRgba(TERRAIN_TILE, TERRAIN_TILE, (x, y) => {
       const onEdge = x === 0 || y === 0 || x === TERRAIN_TILE - 1 || y === TERRAIN_TILE - 1
       // #1c1e25 side edges — measured defect class
@@ -59,10 +59,10 @@ describe('inspectTileRgba', () => {
     })
     const result = inspectTileRgba(rgba, TERRAIN_TILE, TERRAIN_TILE)
     expect(result.ok).toBe(false)
-    expect(result.reasons.some((r) => /dark|frame|border|rim/i.test(r))).toBe(true)
+    expect(result.reasons.some((r) => /neutral|dark|frame|border|rim/i.test(r))).toBe(true)
   })
 
-  it('rejects dark frame (outer ring avg luminance far below interior)', () => {
+  it('rejects baked neutral dark frame (rim much darker + near-neutral)', () => {
     const rgba = makeRgba(TERRAIN_TILE, TERRAIN_TILE, (x, y) => {
       const onRing = x === 0 || y === 0 || x === TERRAIN_TILE - 1 || y === TERRAIN_TILE - 1
       if (onRing) return [20, 24, 28, 255]
@@ -70,11 +70,37 @@ describe('inspectTileRgba', () => {
     })
     const result = inspectTileRgba(rgba, TERRAIN_TILE, TERRAIN_TILE)
     expect(result.ok).toBe(false)
-    expect(result.reasons.some((r) => /dark|frame|border|rim|luminance/i.test(r))).toBe(true)
+    expect(result.reasons.some((r) => /neutral|dark|frame|border|rim/i.test(r))).toBe(true)
   })
 
   it('accepts a synthetic seamless solid tile', () => {
     const rgba = solidTile(48, 96, 56)
+    const result = inspectTileRgba(rgba, TERRAIN_TILE, TERRAIN_TILE)
+    expect(result.ok).toBe(true)
+    expect(result.reasons).toEqual([])
+  })
+
+  it('accepts solid dark-green evening grass (#002010–#104010)', () => {
+    // Luma ~24–40; must not be treated as a baked near-black frame
+    const rgba = solidTile(0x00, 0x20, 0x10)
+    const result = inspectTileRgba(rgba, TERRAIN_TILE, TERRAIN_TILE)
+    expect(result.ok).toBe(true)
+    expect(result.reasons).toEqual([])
+
+    const brighter = solidTile(0x10, 0x40, 0x10)
+    expect(inspectTileRgba(brighter, TERRAIN_TILE, TERRAIN_TILE)).toEqual({
+      ok: true,
+      reasons: [],
+    })
+  })
+
+  it('accepts darker green rim with lighter stone-ish interior (Wang-like, not a frame)', () => {
+    const rgba = makeRgba(TERRAIN_TILE, TERRAIN_TILE, (x, y) => {
+      const onRing = x === 0 || y === 0 || x === TERRAIN_TILE - 1 || y === TERRAIN_TILE - 1
+      // Chromatic dark grass rim vs cooler stone core — legitimate topology contrast
+      if (onRing) return [0x00, 0x28, 0x14, 255]
+      return [0x38, 0x48, 0x68, 255]
+    })
     const result = inspectTileRgba(rgba, TERRAIN_TILE, TERRAIN_TILE)
     expect(result.ok).toBe(true)
     expect(result.reasons).toEqual([])

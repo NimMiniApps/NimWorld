@@ -17,6 +17,11 @@ function luminance(r: number, g: number, b: number): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
+/** Cheap chroma: max–min channel spread. Near-grey ≈ low; grass ≈ high. */
+function chroma(r: number, g: number, b: number): number {
+  return Math.max(r, g, b) - Math.min(r, g, b)
+}
+
 function pixelAt(
   rgba: Uint8ClampedArray | Uint8Array,
   width: number,
@@ -31,12 +36,25 @@ function isOuter(x: number, y: number, width: number, height: number): boolean {
   return x === 0 || y === 0 || x === width - 1 || y === height - 1
 }
 
-/** Near-black opaque edge (path_stone_v01 measured ~#1c1e25). */
-const NEAR_BLACK_LUMA = 45
-const NEAR_BLACK_ALPHA = 240
+const OPAQUE_ALPHA = 250
 
-/** Outer-ring avg luminance this far below interior ⇒ baked dark frame. */
+/**
+ * Baked grey/black frame pixels (path_stone_v01 ~#1c1e25) are dark and near-neutral.
+ * Chromatic dark greens (#002010–#104010) stay above this chroma floor.
+ */
+const NEUTRAL_DARK_LUMA = 45
+const NEUTRAL_CHROMA_MAX = 18
+
+/** Opaque outer ring: near-neutral AND much darker than interior ⇒ rectangular frame. */
 const RIM_LUMA_DELTA = 28
+
+function isNeutralDark(r: number, g: number, b: number, a: number): boolean {
+  return (
+    a >= OPAQUE_ALPHA &&
+    luminance(r, g, b) <= NEUTRAL_DARK_LUMA &&
+    chroma(r, g, b) <= NEUTRAL_CHROMA_MAX
+  )
+}
 
 /**
  * Inspect one decoded RGBA tile. Never throws — returns structured reasons.
@@ -60,9 +78,10 @@ export function inspectTileRgba(
   }
 
   let transparentOuter = 0
-  let nearBlackOpaqueEdge = 0
+  let neutralDarkOpaqueEdge = 0
   let rimLumaSum = 0
-  let rimCount = 0
+  let rimChromaSum = 0
+  let rimOpaqueCount = 0
   let interiorLumaSum = 0
   let interiorCount = 0
 
@@ -73,11 +92,15 @@ export function inspectTileRgba(
       const outer = isOuter(x, y, width, height)
 
       if (outer) {
-        rimLumaSum += luma
-        rimCount++
-        if (a < 250) transparentOuter++
-        if (a >= NEAR_BLACK_ALPHA && luma <= NEAR_BLACK_LUMA) nearBlackOpaqueEdge++
-      } else {
+        if (a < OPAQUE_ALPHA) {
+          transparentOuter++
+        } else {
+          rimLumaSum += luma
+          rimChromaSum += chroma(r, g, b)
+          rimOpaqueCount++
+          if (isNeutralDark(r, g, b, a)) neutralDarkOpaqueEdge++
+        }
+      } else if (a >= OPAQUE_ALPHA) {
         interiorLumaSum += luma
         interiorCount++
       }
@@ -85,23 +108,33 @@ export function inspectTileRgba(
   }
 
   if (transparentOuter > 0) {
-    reasons.push(`transparent outer row/column (${transparentOuter} pixels with alpha < 250)`)
-  }
-
-  if (nearBlackOpaqueEdge > 0) {
     reasons.push(
-      `dark border: ${nearBlackOpaqueEdge} near-black opaque edge pixels (luma ≤ ${NEAR_BLACK_LUMA})`,
+      `transparent outer row/column (${transparentOuter} pixels with alpha < ${OPAQUE_ALPHA})`,
     )
   }
 
-  if (rimCount > 0 && interiorCount > 0) {
-    const rimAvg = rimLumaSum / rimCount
+  if (neutralDarkOpaqueEdge > 0) {
+    reasons.push(
+      `dark border: ${neutralDarkOpaqueEdge} near-neutral dark opaque edge pixels ` +
+        `(luma ≤ ${NEUTRAL_DARK_LUMA}, chroma ≤ ${NEUTRAL_CHROMA_MAX})`,
+    )
+  }
+
+  // Frame heuristic: only when opaque rim is near-neutral (baked grey/black),
+  // not chromatic grass abutting lighter stone (legitimate Wang topology).
+  if (rimOpaqueCount > 0 && interiorCount > 0) {
+    const rimAvgLuma = rimLumaSum / rimOpaqueCount
+    const rimAvgChroma = rimChromaSum / rimOpaqueCount
     const interiorAvg = interiorLumaSum / interiorCount
-    if (interiorAvg - rimAvg >= RIM_LUMA_DELTA) {
+    if (
+      rimAvgChroma <= NEUTRAL_CHROMA_MAX &&
+      interiorAvg - rimAvgLuma >= RIM_LUMA_DELTA
+    ) {
       reasons.push(
-        `dark frame: outer ring avg luminance ${rimAvg.toFixed(1)} is ${
-          (interiorAvg - rimAvg).toFixed(1)
-        } below interior ${interiorAvg.toFixed(1)}`,
+        `dark frame: opaque outer ring avg luminance ${rimAvgLuma.toFixed(1)} is ${(
+          interiorAvg - rimAvgLuma
+        ).toFixed(1)} below interior ${interiorAvg.toFixed(1)} ` +
+          `(near-neutral rim chroma ${rimAvgChroma.toFixed(1)})`,
       )
     }
   }
