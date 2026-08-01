@@ -14,8 +14,21 @@ import {
   CORNER_SE,
   CORNER_SW,
   WANG_TO_ARRAY,
+  wangToArrayIndex,
 } from './terrainTopology'
 import { resolveCornerMask, resolveTerrainLayer, resolveTileIndex } from './terrainResolver'
+
+/**
+ * Independent oracle hard-copied from topology.json / README.
+ * Must NOT be derived from production WANG_TO_ARRAY — neighbourhood→index
+ * tests use this literal so a wrong production table fails loudly.
+ *
+ *   wang:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+ *   array: 6  7 10  9  2 11  4 15  5 14  1  8  3  0 13 12
+ */
+const EXPECTED_WANG_TO_ARRAY = [
+  6, 7, 10, 9, 2, 11, 4, 15, 5, 14, 1, 8, 3, 0, 13, 12,
+] as const
 
 /** Build a grass-filled grid of the given size. */
 function grassGrid(cols: number, rows: number): TerrainCell[][] {
@@ -42,12 +55,19 @@ function neighbourhoodForWang(wang: number): TerrainCell[][] {
 
 describe('terrainResolver — verified Wang topology', () => {
   describe('canonical wang → array mapping', () => {
+    it('production WANG_TO_ARRAY is bijective and matches the locked oracle', () => {
+      expect(WANG_TO_ARRAY).toHaveLength(16)
+      expect(new Set(WANG_TO_ARRAY).size).toBe(16)
+      expect([...WANG_TO_ARRAY]).toEqual([...EXPECTED_WANG_TO_ARRAY])
+    })
+
     it.each(
-      WANG_TO_ARRAY.map((arrayIndex, wang) => ({ wang, arrayIndex })),
-    )('wang $wang resolves to array index $arrayIndex', ({ wang, arrayIndex }) => {
+      EXPECTED_WANG_TO_ARRAY.map((arrayIndex, wang) => ({ wang, arrayIndex })),
+    )('wang $wang → array $arrayIndex (neighbourhood + wangToArrayIndex)', ({ wang, arrayIndex }) => {
       const grid = neighbourhoodForWang(wang)
       expect(resolveCornerMask(grid, 0, 0)).toBe(wang)
       expect(resolveTileIndex(grid, 0, 0)).toBe(arrayIndex)
+      expect(wangToArrayIndex(wang)).toBe(arrayIndex)
     })
   })
 
@@ -129,18 +149,21 @@ describe('terrainResolver — verified Wang topology', () => {
       expect(resolveTileIndex(grid, 1, 1)).toBe(13)
     })
 
-    it('T-junction: three arms of a cross', () => {
-      // Vertical arm cols=1 rows 0..2, plus east arm at row 1 col 2
-      // (missing west arm) — classic T opening west at tile (1,1) sampling.
+    it('T-junction: bar + stem yields a true 3-corner mask (wang 7)', () => {
+      // T opening north (bar east–west, stem south), sampled at tile (1,1):
+      //   . # #
+      //   # # .
+      //     #
+      // Corners at (1,1): NW=grass, NE=stone, SW=stone, SE=stone → wang 7.
+      // Distinct from the concave-L case (wang 14).
       const grid = grassGrid(4, 4)
-      grid[0][1] = TERRAIN_PLAZA
-      grid[1][1] = TERRAIN_PLAZA
-      grid[2][1] = TERRAIN_PLAZA
-      grid[1][2] = TERRAIN_PLAZA
-      // Also need SE for a fuller T sample at (1,1):
-      // NW=stone, NE=stone, SW=stone, SE=grass → wang 14 → array 13
-      expect(resolveCornerMask(grid, 1, 1)).toBe(CORNER_NW | CORNER_NE | CORNER_SW)
-      expect(resolveTileIndex(grid, 1, 1)).toBe(13)
+      grid[1][2] = TERRAIN_PLAZA // NE
+      grid[1][3] = TERRAIN_PLAZA // bar east extension
+      grid[2][1] = TERRAIN_PLAZA // SW
+      grid[2][2] = TERRAIN_PLAZA // SE
+      grid[3][1] = TERRAIN_PLAZA // stem south
+      expect(resolveCornerMask(grid, 1, 1)).toBe(CORNER_NE | CORNER_SW | CORNER_SE)
+      expect(resolveTileIndex(grid, 1, 1)).toBe(EXPECTED_WANG_TO_ARRAY[7])
     })
 
     it('full intersection: 3×3 stone cross / block interior', () => {
