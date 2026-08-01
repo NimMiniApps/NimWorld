@@ -300,6 +300,8 @@ export class PlazaScene extends Phaser.Scene {
     for (const item of DECOR) {
       const img = this.add.image(item.x, item.y, item.key)
       img.setOrigin(0.5, 0.85)
+      const size = ART_DISPLAY_SIZE[item.key]
+      if (size) img.setDisplaySize(size.w, size.h)
       img.setDepth(100 + item.y + (item.depthBias ?? 0))
       this.depthSprites.push(img)
 

@@ -29,9 +29,9 @@ Per-landmark: Purpose · Mood · Color · Sounds · Lighting · Props · Animati
 - **Animation:** Portal FX overlay (`effects/arcade_portal_v01_final.png`) + marquee pulse  
 - **Recognition:** Y — cyan portal; target: unmistakable silhouette next to Fountain  
 - **Screenshot role:** Hero (pair with Fountain)  
-- **Asset:** `landmarks/arcade_v01_final.png` → `building-arcade`  
+- **Asset:** `landmarks/arcade_v03_final.png` → `building-arcade` (true-alpha wow pass; QA passed)  
 - **Rejected:** `rejected/arcade_v02_checkerboard_rejected.png` — baked checkerboard (no real alpha); never ship  
-- **Gap:** Still needs a true-alpha wow pass (marquee + stronger portal) without overlaying the standalone portal ring sprite on the facade.
+- **Note:** Standalone portal FX stays a separate icon key — never overlay full ring on façade.
 
 ## Arena
 

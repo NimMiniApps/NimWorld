@@ -47,12 +47,13 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | Character direction | 2–3 | 3 | v02–v04 exploration (not locked) |
 | Fountain production | — | 2 | candidate + larger-crystal final |
 | Portal production | — | 2 | cabinet miss + pure portal final |
-| Landmark kit | 18 | 7 | + arcade wow v02 |
+| Landmark kit | 18 | 8 | + arcade v03 true-alpha |
 | Character lock | — | 0 | V4 locked from prior exploration |
-| C Props | 8 | | |
+| C Props | 8 | 6 | tree/bush/crates/bench/lantern + door candidate |
+| Path tiles (maps) | — | ~20–40 | in progress `create_path_tiles` |
 | D Characters | 4 | | |
 | Reserve | 2 | | |
-| **Total** | **40** | **21** | Trial remaining: 19 |
+| **Total** | was 40 trial | ~35+ | Tier 1: 2000 gens |
 
 ## Phase A concepts
 
@@ -84,3 +85,9 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | `concepts/characters_v04_citizen_refine.png` | — | concept | dir |
 
 Approved files are mirrored under `apps/web/public/assets/art/` for Phaser `load.image`.
+
+### QA gate before wiring any PNG
+
+1. Must be true RGBA with transparent pixels outside the subject (not editor checkerboard baked into RGB).  
+2. Do not overlay standalone portal/icon assets on building façades — keep FX as separate keys for transitions/UI.  
+3. Spot-check in-game at plaza scale before promoting `_final`.

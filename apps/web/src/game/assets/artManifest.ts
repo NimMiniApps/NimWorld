@@ -3,13 +3,18 @@ export const ART_OVERRIDES: Record<string, string | null> = {
   'fountain-base': 'landmarks/fountain_v02_final.png',
   // Combined into fountain-base production sprite; keep null so procedural crystal is skipped in scene.
   'fountain-crystal': null,
-  'building-arcade': 'landmarks/arcade_v01_final.png',
+  'building-arcade': 'landmarks/arcade_v03_final.png',
   'building-arena': 'landmarks/arena_v02_final.png',
   'building-townhall': 'landmarks/townhall_v01_final.png',
   'building-social': 'landmarks/social_v01_final.png',
   'building-construction': 'landmarks/marketplace_v01_final.png',
   'fx-arcade-portal': 'effects/arcade_portal_v01_final.png',
-  // props / chars filled as approved
+  'prop-tree': 'props/tree_v01_final.png',
+  'prop-bush': 'props/bush_v01_final.png',
+  'prop-crates': 'props/crates_v01_final.png',
+  'prop-bench': 'props/bench_v01_final.png',
+  'prop-lantern': 'props/lantern_v01_final.png',
+  // chars filled as approved
 }
 
 /** Target display size so PixelLab canvases match plaza layout footprint. */
@@ -20,6 +25,11 @@ export const ART_DISPLAY_SIZE: Partial<Record<string, { w: number; h: number }>>
   'building-townhall': { w: 140, h: 142 },
   'building-social': { w: 128, h: 126 },
   'building-construction': { w: 140, h: 118 },
+  'prop-tree': { w: 48, h: 60 },
+  'prop-bush': { w: 32, h: 28 },
+  'prop-bench': { w: 44, h: 28 },
+  'prop-lantern': { w: 20, h: 40 },
+  'prop-crates': { w: 44, h: 32 },
 }
 
 export function resolveArtOverride(key: string): string | null {
