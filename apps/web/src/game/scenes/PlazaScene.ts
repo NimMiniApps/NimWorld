@@ -208,10 +208,18 @@ export class PlazaScene extends Phaser.Scene {
       0,
       0,
     )
-    if (tileset) {
-      const layer = map.createLayer(0, tileset, 0, 0)
-      layer?.setDepth(0)
+    if (!tileset) {
+      throw new Error(
+        `Plaza terrain tileset missing: expected texture key "${TERRAIN_TILESET_KEY}" (preload loadTerrainTileset?)`,
+      )
     }
+    const layer = map.createLayer(0, tileset, 0, 0)
+    if (!layer) {
+      throw new Error(
+        `Plaza terrain TilemapLayer failed to create for tileset "${TERRAIN_TILESET_KEY}"`,
+      )
+    }
+    layer.setDepth(0)
 
     // Rim water only (ponds / channels) — not a solid frame everywhere
     const waterBand = [
