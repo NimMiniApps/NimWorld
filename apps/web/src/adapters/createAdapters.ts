@@ -4,9 +4,10 @@ import { BrowserAppLauncher } from '@/adapters/launcher/AppLauncher'
 import { ProfileClientNimConnectAdapter } from '@/adapters/nimconnect/ProfileClientNimConnectAdapter'
 import { MiniAppSdkPaymentAdapter } from '@/adapters/payment/NimiqPaymentAdapter'
 import { LocalPresenceAdapter } from '@/adapters/presence/PresenceAdapter'
+import { getResolvedAddress } from '@/auth/session'
 
 export function createAdapters() {
-  const nimconnect = new ProfileClientNimConnectAdapter()
+  const nimconnect = new ProfileClientNimConnectAdapter(getResolvedAddress() ?? undefined)
   const catalog = new HttpMiniAppCatalogAdapter()
   const launcher = new BrowserAppLauncher()
   const arena = new MockArenaStatusAdapter()

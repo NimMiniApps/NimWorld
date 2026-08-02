@@ -4,20 +4,39 @@
 # Usage:
 #   cp docker-compose.homelab.yml.example docker-compose.homelab.yml
 #   # edit domain/owner, then:
+#   export SESSION_SECRET="$(openssl rand -base64 32)"
 #   docker stack deploy -c docker-compose.homelab.yml nimworld
 #
-# nimworld.<domain> → web (nginx SPA), reachable through Traefik and your
-# Cloudflare tunnel.
+# Hostnames (must be in Traefik AND your Cloudflare tunnel):
+#   nimworld.<domain>      → web (nginx SPA); /auth-api/ proxies to api
+#   api-nimworld.<domain>  → api (login/session endpoints)
 #
-# No backend service yet — apps/web/nginx.conf proxies /catalog-api straight
-# to api.nimiqminiapps.com. When NimWorld gets its own backend, add a service
-# here the same way NimBomber does (api-nimworld.<domain>) and repoint the
-# nginx proxy at it.
+# Login only — no DB. SESSION_SECRET is the only required config.
 #
 # docker-compose.homelab.yml is gitignored so your real domain stays out of
 # the public repo.
 
 services:
+  api:
+    image: ghcr.io/nimminiapps/nimworld-api:latest
+    networks:
+      - web
+    environment:
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET for login sessions}
+      ALLOW_ORIGIN: https://nimworld.nimiqminiapps.com
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: any
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nimworld-api.rule=Host(`api-nimworld.nimiqminiapps.com`)
+        - traefik.http.routers.nimworld-api.entrypoints=websecure
+        - traefik.http.routers.nimworld-api.tls=true
+        - traefik.http.services.nimworld-api.loadbalancer.server.port=8081
+
   web:
     image: ghcr.io/nimminiapps/nimworld-web:latest
     networks:

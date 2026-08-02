@@ -1,14 +1,28 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import GameCanvas from '@/components/GameCanvas.vue'
+import LoginGate from '@/components/LoginGate.vue'
 import ProfileChip from '@/components/hud/ProfileChip.vue'
 import InteractionPrompt from '@/components/hud/InteractionPrompt.vue'
 import VirtualJoystick from '@/components/hud/VirtualJoystick.vue'
 import LocationOverlay from '@/components/overlays/LocationOverlay.vue'
 import { usePlazaStore } from '@/stores/plazaStore'
+import { resolveSession } from '@/auth/session'
 
 const store = usePlazaStore()
 const showMoveHint = ref(true)
+const sessionResolved = ref(false)
+const needsLogin = ref(false)
+
+onMounted(async () => {
+  const session = await resolveSession()
+  needsLogin.value = session.mode === 'anonymous'
+  sessionResolved.value = true
+})
+
+function onAuthenticated() {
+  needsLogin.value = false
+}
 
 function onFirstMove() {
   showMoveHint.value = false
@@ -17,9 +31,16 @@ function onFirstMove() {
 
 <template>
   <div class="shell">
-    <GameCanvas @first-move="onFirstMove" />
+    <GameCanvas v-if="sessionResolved && !needsLogin" @first-move="onFirstMove" />
 
-    <div v-if="store.loading" class="boot nw-panel">
+    <div v-if="!sessionResolved" class="boot nw-panel">
+      <p class="display">NimWorld</p>
+      <p>Connecting…</p>
+    </div>
+
+    <LoginGate v-else-if="needsLogin" @authenticated="onAuthenticated" />
+
+    <div v-else-if="store.loading" class="boot nw-panel">
       <p class="display">NimWorld</p>
       <p>Loading the plaza…</p>
     </div>

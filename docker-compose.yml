@@ -1,7 +1,16 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      SESSION_SECRET: ${SESSION_SECRET:-dev-insecure-session-secret}
+
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
     ports:
-      - '${PORT:-8080}:80'
+      - '${PORT:-8090}:80'
+    depends_on:
+      - api
