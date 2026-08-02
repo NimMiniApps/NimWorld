@@ -1,0 +1,40 @@
+# Homelab deployment stack — pulls a prebuilt image from GHCR (see
+# .github/workflows/docker-build.yml) instead of building locally.
+#
+# Usage:
+#   cp docker-compose.homelab.yml.example docker-compose.homelab.yml
+#   # edit domain/owner, then:
+#   docker stack deploy -c docker-compose.homelab.yml nimworld
+#
+# nimworld.<domain> → web (nginx SPA), reachable through Traefik and your
+# Cloudflare tunnel.
+#
+# No backend service yet — apps/web/nginx.conf proxies /catalog-api straight
+# to api.nimiqminiapps.com. When NimWorld gets its own backend, add a service
+# here the same way NimBomber does (api-nimworld.<domain>) and repoint the
+# nginx proxy at it.
+#
+# docker-compose.homelab.yml is gitignored so your real domain stays out of
+# the public repo.
+
+services:
+  web:
+    image: ghcr.io/nimminiapps/nimworld-web:latest
+    networks:
+      - web
+    deploy:
+      placement:
+        constraints:
+          - node.role == worker
+      restart_policy:
+        condition: any
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.nimworld.rule=Host(`nimworld.nimiqminiapps.com`)
+        - traefik.http.routers.nimworld.entrypoints=websecure
+        - traefik.http.routers.nimworld.tls=true
+        - traefik.http.services.nimworld.loadbalancer.server.port=80
+
+networks:
+  web:
+    external: true

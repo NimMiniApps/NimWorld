@@ -1,0 +1,7 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '${PORT:-8080}:80'
