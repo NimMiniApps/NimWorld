@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import GameCanvas from '@/components/GameCanvas.vue'
+import BootScreen from '@/components/BootScreen.vue'
 import LoginGate from '@/components/LoginGate.vue'
 import ProfileChip from '@/components/hud/ProfileChip.vue'
 import InteractionPrompt from '@/components/hud/InteractionPrompt.vue'
@@ -13,8 +14,21 @@ const store = usePlazaStore()
 const showMoveHint = ref(true)
 const sessionResolved = ref(false)
 const needsLogin = ref(false)
+const gameReady = ref(false)
+
+const bootStatus = computed(() => {
+  if (!sessionResolved.value) return 'Connecting…'
+  if (store.loading) return 'Opening the plaza…'
+  if (!gameReady.value) return 'Loading the world…'
+  return 'Ready'
+})
+
+const showBoot = computed(
+  () => sessionResolved.value && !needsLogin.value && (!gameReady.value || store.loading) && !store.error,
+)
 
 onMounted(async () => {
+  document.getElementById('boot-shell')?.remove()
   const session = await resolveSession()
   needsLogin.value = session.mode === 'anonymous'
   sessionResolved.value = true
@@ -22,6 +36,11 @@ onMounted(async () => {
 
 function onAuthenticated() {
   needsLogin.value = false
+  gameReady.value = false
+}
+
+function onGameReady() {
+  gameReady.value = true
 }
 
 function onFirstMove() {
@@ -31,23 +50,22 @@ function onFirstMove() {
 
 <template>
   <div class="shell">
-    <GameCanvas v-if="sessionResolved && !needsLogin" @first-move="onFirstMove" />
+    <GameCanvas
+      v-if="sessionResolved && !needsLogin"
+      @first-move="onFirstMove"
+      @ready="onGameReady"
+    />
 
-    <div v-if="!sessionResolved" class="boot nw-panel">
-      <p class="display">NimWorld</p>
-      <p>Connecting…</p>
-    </div>
+    <BootScreen v-if="!sessionResolved" status="Connecting…" />
 
     <LoginGate v-else-if="needsLogin" @authenticated="onAuthenticated" />
 
-    <div v-else-if="store.loading" class="boot nw-panel">
-      <p class="display">NimWorld</p>
-      <p>Loading the plaza…</p>
-    </div>
+    <BootScreen v-else-if="showBoot" :status="bootStatus" />
 
-    <div v-else-if="store.error" class="boot nw-panel">
-      <p class="display">Could not start</p>
-      <p>{{ store.error }}</p>
+    <div v-else-if="store.error" class="error-shell">
+      <BootScreen status="Could not start" :busy="false">
+        <p class="error-detail">{{ store.error }}</p>
+      </BootScreen>
     </div>
 
     <template v-else>
@@ -180,21 +198,10 @@ function onFirstMove() {
   opacity: 0.35;
 }
 
-.boot {
-  position: absolute;
-  z-index: 30;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  padding: 1.25rem 1.4rem;
-  min-width: 16rem;
-  text-align: center;
-}
-
-.boot .display {
-  margin: 0 0 0.35rem;
-  font-size: 1.4rem;
-  color: var(--nw-gold);
+.error-detail {
+  margin: 0;
+  color: #ff8a8a;
+  font-size: 0.9rem;
 }
 
 .toast {
@@ -226,7 +233,7 @@ function onFirstMove() {
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateX(-50%);
   }
 }
 

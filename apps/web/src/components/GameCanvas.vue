@@ -23,20 +23,7 @@ onMounted(async () => {
   await store.bootstrap()
   if (!host.value) return
 
-  const actors = await adapters.presence.getActors()
-  const label = store.profile?.handle ? `@${store.profile.handle}` : '@guest'
-
-  game = createPlazaGame(host.value, {
-    bridge: worldBridge,
-    actors,
-    spawn: store.lastPosition,
-    playerLabel: label,
-  })
-
-  const onFirst = () => emit('firstMove')
-  game.events.on('plaza-first-move', onFirst)
-  offFirstMove = () => game?.events.off('plaza-first-move', onFirst)
-
+  // Subscribe before Phaser boots so PLAYER_READY is never missed.
   worldBridge.onWorld((event) => {
     switch (event.type) {
       case 'INTERACTION_AVAILABLE':
@@ -61,6 +48,20 @@ onMounted(async () => {
         break
     }
   })
+
+  const actors = await adapters.presence.getActors()
+  const label = store.profile?.handle ? `@${store.profile.handle}` : '@guest'
+
+  game = createPlazaGame(host.value, {
+    bridge: worldBridge,
+    actors,
+    spawn: store.lastPosition,
+    playerLabel: label,
+  })
+
+  const onFirst = () => emit('firstMove')
+  game.events.on('plaza-first-move', onFirst)
+  offFirstMove = () => game?.events.off('plaza-first-move', onFirst)
 
   const params = new URLSearchParams(window.location.search)
   const returned = params.get('returnedFrom')

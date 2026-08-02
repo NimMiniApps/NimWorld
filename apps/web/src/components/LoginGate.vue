@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import BootScreen from '@/components/BootScreen.vue'
 import { loginWithHub } from '@/auth/session'
 
 const emit = defineEmits<{ (e: 'authenticated', address: string): void }>()
@@ -22,52 +23,46 @@ async function connect() {
 </script>
 
 <template>
-  <div class="boot nw-panel">
-    <p class="display">NimWorld</p>
-    <p>Connect your Nimiq account to enter the plaza.</p>
-    <button class="connect" :disabled="connecting" @click="connect">
+  <BootScreen
+    :status="connecting ? 'Opening Nimiq Hub…' : 'Connect your Nimiq account to enter'"
+    :busy="connecting"
+  >
+    <button class="connect" type="button" :disabled="connecting" @click="connect">
       {{ connecting ? 'Connecting…' : 'Connect with Nimiq Hub' }}
     </button>
     <p v-if="error" class="error">{{ error }}</p>
-  </div>
+  </BootScreen>
 </template>
 
 <style scoped>
-.boot {
-  position: absolute;
-  z-index: 30;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  padding: 1.25rem 1.4rem;
-  min-width: 16rem;
-  text-align: center;
-}
-
-.boot .display {
-  margin: 0 0 0.35rem;
-  font-size: 1.4rem;
-  color: var(--nw-gold);
-}
-
 .connect {
-  margin-top: 0.9rem;
-  padding: 0.6rem 1.1rem;
-  border-radius: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
   border: none;
-  background: var(--nw-gold);
-  color: #14171f;
-  font-weight: 700;
+  background: linear-gradient(135deg, var(--nw-gold), #ff8a3d);
+  color: #1a1204;
+  font-weight: 800;
+  font-size: 0.95rem;
   cursor: pointer;
+  box-shadow: 0 10px 28px rgba(245, 166, 35, 0.28);
+  transition: transform 140ms ease, filter 140ms ease;
+}
+
+.connect:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.connect:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .connect:disabled {
-  opacity: 0.6;
+  opacity: 0.7;
   cursor: default;
 }
 
 .error {
-  margin-top: 0.6rem;
+  margin: 0.75rem 0 0;
   color: #ff8a8a;
   font-size: 0.85rem;
 }
