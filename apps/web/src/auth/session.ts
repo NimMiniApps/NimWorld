@@ -3,6 +3,10 @@
 //   - standalone browser -> Nimiq Hub login, verified by apps/api, gates the plaza
 const AUTH_API_BASE = '/auth-api'
 
+// HubApi() with no endpoint defaults to localhost:8080 (dev). Always pass
+// production Hub unless explicitly overridden.
+const HUB_URL = import.meta.env.VITE_NIMIQ_HUB_URL?.trim() || 'https://hub.nimiq.com'
+
 export type SessionState =
   | { mode: 'embedded' }
   | { mode: 'authenticated'; address: string }
@@ -64,7 +68,7 @@ export async function loginWithHub(): Promise<string> {
   const { nonce, token } = (await challengeRes.json()) as { nonce: string; token: string }
 
   const { default: HubApi } = await import('@nimiq/hub-api')
-  const hubApi = new HubApi()
+  const hubApi = new HubApi(HUB_URL)
   const signed = await hubApi.signMessage({
     appName: 'NimWorld',
     message: nonce,

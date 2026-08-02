@@ -72,9 +72,13 @@ describe('loginWithHub', () => {
       signature: new Uint8Array([4, 5, 6]),
     })
 
+    const HubApi = (await import('@nimiq/hub-api')).default as unknown as ReturnType<typeof vi.fn>
+    HubApi.mockClear()
+
     const { loginWithHub } = await import('./session')
     await expect(loginWithHub()).resolves.toBe('NQ01 TEST')
 
+    expect(HubApi).toHaveBeenCalledWith('https://hub.nimiq.com')
     expect(fetchMock).toHaveBeenNthCalledWith(1, '/auth-api/auth/challenge', { method: 'POST' })
     const verifyCall = fetchMock.mock.calls[1]
     expect(verifyCall[0]).toBe('/auth-api/auth/verify')
