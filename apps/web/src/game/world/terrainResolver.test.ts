@@ -3,7 +3,12 @@ import {
   TERRAIN_CONSTRUCTION,
   TERRAIN_ENTRANCE,
   TERRAIN_GRASS,
+  TERRAIN_PATH,
   TERRAIN_PLAZA,
+  TERRAIN_WATER,
+  isPath,
+  isStoneFamily,
+  isWater,
   type TerrainCell,
 } from './terrainTypes'
 import {
@@ -243,5 +248,46 @@ describe('terrainResolver — verified Wang topology', () => {
       expect(resolveCornerMask(grid, cols - 1, rows - 1)).toBe(CORNER_NW)
       expect(layer[rows - 1][cols - 1]).toBe(5)
     })
+  })
+})
+
+describe('resolver predicate parameter', () => {
+  it('defaults to the stone family when no predicate is given', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_PLAZA, TERRAIN_GRASS],
+      [TERRAIN_GRASS, TERRAIN_GRASS],
+    ]
+    expect(resolveCornerMask(grid, 0, 0)).toBe(CORNER_NW)
+  })
+
+  it('resolves a water layer when given the water predicate', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_WATER, TERRAIN_GRASS],
+      [TERRAIN_GRASS, TERRAIN_GRASS],
+    ]
+    // Water is upper for this layer; stone family sees nothing.
+    expect(resolveCornerMask(grid, 0, 0, isWater)).toBe(CORNER_NW)
+    expect(resolveCornerMask(grid, 0, 0)).toBe(0)
+  })
+
+  it('resolves a path layer independently of stone', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_PATH, TERRAIN_PLAZA],
+      [TERRAIN_GRASS, TERRAIN_GRASS],
+    ]
+    expect(resolveCornerMask(grid, 0, 0, isPath)).toBe(CORNER_NW)
+    expect(resolveCornerMask(grid, 0, 0, isStoneFamily)).toBe(CORNER_NE)
+  })
+
+  it('applies the predicate across a whole layer', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_WATER, TERRAIN_WATER],
+      [TERRAIN_WATER, TERRAIN_WATER],
+    ]
+    const layer = resolveTerrainLayer(grid, isWater)
+    expect(layer).toHaveLength(2)
+    expect(layer[0]).toHaveLength(2)
+    // Top-left display tile has all four corners water.
+    expect(layer[0]![0]).toBe(resolveTileIndex(grid, 0, 0, isWater))
   })
 })
