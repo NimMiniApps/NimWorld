@@ -195,8 +195,8 @@ Each phase gets its own implementation plan.
 
 | Phase | Content | PixelLab spend |
 | --- | --- | --- |
-| **C1** | Terrain foundation — new cell types, resolver predicate, rewritten layout, run-merged terrain collision, QA generalization, tests green. Renders in placeholder colors. | none |
-| **C2** | Water and path tilesets generated, chained, and wired in. | ~10 |
+| **C1** | Terrain foundation — new cell types, resolver predicate, rewritten layout, run-merged terrain collision, QA generalization, tests green. Renders in placeholder colors. — **done** | none |
+| **C2** | Water and path tilesets generated, chained, and wired in. — **done** (2 gens) | ~10 |
 | **C3** | Foliage, border wall, bridges, density pass. | ~20 |
 | **C4** | Landmark scale-up and in-world signboards. | ~15 |
 | **C5** | Mobile HUD trim — NIM balance chip, bottom nav. | none |
