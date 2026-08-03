@@ -28,7 +28,9 @@ Vue HUD / overlays  <── WorldBridge ──>  Phaser plaza
 | NimConnect profile-client | Real public profile/handle |
 | NimConnect friends/achievements/inventory | Mock adapters, labelled in UI |
 | NimiqMiniApps API | Real via `/catalog-api` proxy, fallback to manifests |
-| Mini App SDK payments | Best-effort; mock request-link fallback |
+| Mini App SDK (embedded Pay) | `init` + `listAccounts` → `resolvedAddress`; Hub login only outside Pay |
+| App launch / return | Hybrid: Pay `location.assign`, browser `window.open`; `returnUrl` includes `returnedFrom=<appId>` |
+| Mini App SDK payments | Hybrid: Pay `sendBasicTransaction`; desktop Hub `checkout`; tip jar + Nearby send + request-link |
 | Presence WebSocket | Not implemented; local ghosts/NPCs only |
 
 ## Bridge events
