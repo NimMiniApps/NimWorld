@@ -6,7 +6,9 @@ import LoginGate from '@/components/LoginGate.vue'
 import ProfileChip from '@/components/hud/ProfileChip.vue'
 import InteractionPrompt from '@/components/hud/InteractionPrompt.vue'
 import VirtualJoystick from '@/components/hud/VirtualJoystick.vue'
+import NearbyPlayers from '@/components/hud/NearbyPlayers.vue'
 import LocationOverlay from '@/components/overlays/LocationOverlay.vue'
+import PaymentSheet from '@/components/payments/PaymentSheet.vue'
 import { usePlazaStore } from '@/stores/plazaStore'
 import { resolveSession } from '@/auth/session'
 
@@ -85,6 +87,8 @@ function onFirstMove() {
         Move with the stick or WASD
       </div>
 
+      <NearbyPlayers />
+
       <div class="center-prompt">
         <InteractionPrompt />
       </div>
@@ -98,6 +102,7 @@ function onFirstMove() {
     </template>
 
     <LocationOverlay />
+    <PaymentSheet />
   </div>
 </template>
 
