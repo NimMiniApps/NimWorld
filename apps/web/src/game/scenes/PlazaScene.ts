@@ -22,6 +22,7 @@ import { TERRAIN_TILESET_KEY } from '@/game/assets/loadTerrainTileset'
 import { buildPlazaTerrainGrid } from '@/game/world/plazaTerrainMap'
 import { resolveTerrainLayer } from '@/game/world/terrainResolver'
 import { TERRAIN_TILE } from '@/game/world/terrainTypes'
+import { getLocationToAutoOpen } from '@/game/world/locationEntry'
 
 export interface PlazaSceneData {
   bridge: WorldBridge
@@ -693,6 +694,7 @@ export class PlazaScene extends Phaser.Scene {
       }
     }
 
+    const locationToOpen = getLocationToAutoOpen(this.activeLocationId, nearest?.id ?? null)
     const nextId = nearest?.id ?? (ghostTarget ? `ghost:${ghostTarget.displayName}` : null)
     if (nextId !== this.activeLocationId) {
       this.activeLocationId = nextId
@@ -705,6 +707,9 @@ export class PlazaScene extends Phaser.Scene {
             kind: nearest.id,
           },
         })
+        if (locationToOpen) {
+          this.bridge.emitWorld({ type: 'OPEN_LOCATION', locationId: locationToOpen })
+        }
       } else if (ghostTarget) {
         this.bridge.emitWorld({
           type: 'INTERACTION_AVAILABLE',
