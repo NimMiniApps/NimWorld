@@ -52,6 +52,7 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | C Props | 8 | 6 | tree/bush/crates/bench/lantern + door candidate |
 | Path tiles (maps) | — | ~20–40 | `path_stone_v01` deprecated (edge QA fail) |
 | Plaza Wang tiles | — | 4 gens | `plaza_stone_wang_v01` approved (attempt 1 + palette remap) |
+| C2 water + path tiles | ~10 | 2 gens | both approved on attempt 1 (chained off the grass base tile + palette remap) |
 | D Characters | 5 | 5 | Player/Guide/Builder/TM/Courier + walk 4-dir |
 | Reserve | 2 | | |
 | **Total** | was 40 trial | ~60+ | Tier 1: 2000 gens |
@@ -97,6 +98,8 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | `characters/tournament_master_sheet_v01.png` | `char-npc-d` | final | B |
 | `characters/builder_sheet_v01.png` | `char-npc-e` | final | B |
 | `tiles/plaza_stone_wang_v01/tileset.png` | `terrain-plaza-wang` (Task 6) | approved | terrain |
+| `tiles/canal_water_wang_v01/tileset.png` | `terrain-canal-water` | approved | C2 |
+| `tiles/path_warm_wang_v01/tileset.png` | `terrain-path-warm` | approved | C2 |
 | `tiles/path_stone_v01/*` | `path-auto-*` | deprecated | terrain |
 | `rejected/path_stone_v01/*` | — | rejected | terrain (transparent edges + `#1c1e25` borders) |
 

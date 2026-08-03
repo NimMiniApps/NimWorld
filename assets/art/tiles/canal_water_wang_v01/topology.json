@@ -1,0 +1,185 @@
+{
+  "tileset_id": "9ab13560-dc3e-456a-9b38-6bc6bfd54d6c",
+  "corner_bit_order": "wang = NW*8 + NE*4 + SW*2 + SE*1 (upper=1, lower=0)",
+  "sheet_layout": "array order, 4 columns: col=i%4, row=i//4 — NOT wang_N order",
+  "lower": "canal water",
+  "upper": "grass",
+  "tiles": [
+    {
+      "array_index": 0,
+      "col": 0,
+      "row": 0,
+      "wang_name": "wang_13",
+      "wang_index": 13,
+      "NW": "upper",
+      "NE": "upper",
+      "SW": "lower",
+      "SE": "upper"
+    },
+    {
+      "array_index": 1,
+      "col": 1,
+      "row": 0,
+      "wang_name": "wang_10",
+      "wang_index": 10,
+      "NW": "upper",
+      "NE": "lower",
+      "SW": "upper",
+      "SE": "lower"
+    },
+    {
+      "array_index": 2,
+      "col": 2,
+      "row": 0,
+      "wang_name": "wang_4",
+      "wang_index": 4,
+      "NW": "lower",
+      "NE": "upper",
+      "SW": "lower",
+      "SE": "lower"
+    },
+    {
+      "array_index": 3,
+      "col": 3,
+      "row": 0,
+      "wang_name": "wang_12",
+      "wang_index": 12,
+      "NW": "upper",
+      "NE": "upper",
+      "SW": "lower",
+      "SE": "lower"
+    },
+    {
+      "array_index": 4,
+      "col": 0,
+      "row": 1,
+      "wang_name": "wang_6",
+      "wang_index": 6,
+      "NW": "lower",
+      "NE": "upper",
+      "SW": "upper",
+      "SE": "lower"
+    },
+    {
+      "array_index": 5,
+      "col": 1,
+      "row": 1,
+      "wang_name": "wang_8",
+      "wang_index": 8,
+      "NW": "upper",
+      "NE": "lower",
+      "SW": "lower",
+      "SE": "lower"
+    },
+    {
+      "array_index": 6,
+      "col": 2,
+      "row": 1,
+      "wang_name": "wang_0",
+      "wang_index": 0,
+      "NW": "lower",
+      "NE": "lower",
+      "SW": "lower",
+      "SE": "lower"
+    },
+    {
+      "array_index": 7,
+      "col": 3,
+      "row": 1,
+      "wang_name": "wang_1",
+      "wang_index": 1,
+      "NW": "lower",
+      "NE": "lower",
+      "SW": "lower",
+      "SE": "upper"
+    },
+    {
+      "array_index": 8,
+      "col": 0,
+      "row": 2,
+      "wang_name": "wang_11",
+      "wang_index": 11,
+      "NW": "upper",
+      "NE": "lower",
+      "SW": "upper",
+      "SE": "upper"
+    },
+    {
+      "array_index": 9,
+      "col": 1,
+      "row": 2,
+      "wang_name": "wang_3",
+      "wang_index": 3,
+      "NW": "lower",
+      "NE": "lower",
+      "SW": "upper",
+      "SE": "upper"
+    },
+    {
+      "array_index": 10,
+      "col": 2,
+      "row": 2,
+      "wang_name": "wang_2",
+      "wang_index": 2,
+      "NW": "lower",
+      "NE": "lower",
+      "SW": "upper",
+      "SE": "lower"
+    },
+    {
+      "array_index": 11,
+      "col": 3,
+      "row": 2,
+      "wang_name": "wang_5",
+      "wang_index": 5,
+      "NW": "lower",
+      "NE": "upper",
+      "SW": "lower",
+      "SE": "upper"
+    },
+    {
+      "array_index": 12,
+      "col": 0,
+      "row": 3,
+      "wang_name": "wang_15",
+      "wang_index": 15,
+      "NW": "upper",
+      "NE": "upper",
+      "SW": "upper",
+      "SE": "upper"
+    },
+    {
+      "array_index": 13,
+      "col": 1,
+      "row": 3,
+      "wang_name": "wang_14",
+      "wang_index": 14,
+      "NW": "upper",
+      "NE": "upper",
+      "SW": "upper",
+      "SE": "lower"
+    },
+    {
+      "array_index": 14,
+      "col": 2,
+      "row": 3,
+      "wang_name": "wang_9",
+      "wang_index": 9,
+      "NW": "upper",
+      "NE": "lower",
+      "SW": "lower",
+      "SE": "upper"
+    },
+    {
+      "array_index": 15,
+      "col": 3,
+      "row": 3,
+      "wang_name": "wang_7",
+      "wang_index": 7,
+      "NW": "lower",
+      "NE": "upper",
+      "SW": "upper",
+      "SE": "upper"
+    }
+  ]
+}
