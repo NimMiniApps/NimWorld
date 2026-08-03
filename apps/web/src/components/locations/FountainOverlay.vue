@@ -1,28 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { createAdapters } from '@/adapters/createAdapters'
 import type { Achievement, InventoryItem } from '@/domain/types'
 import { usePlazaStore } from '@/stores/plazaStore'
 
 const store = usePlazaStore()
 const achievements = ref<Achievement[]>([])
 const inventory = ref<InventoryItem[]>([])
-const adapters = createAdapters()
 
 onMounted(async () => {
-  await adapters.nimconnect.initialize()
-  achievements.value = await adapters.nimconnect.getAchievements()
-  inventory.value = await adapters.nimconnect.getInventory()
+  const extras = await store.loadFountainExtras()
+  achievements.value = extras.achievements
+  inventory.value = extras.inventory
 })
-
-async function openProfile() {
-  await adapters.nimconnect.openProfile(store.profile?.handle)
-}
-
-async function requestNim() {
-  await adapters.payment.initialize()
-  await adapters.payment.requestNim(100_000, 'NimWorld gift request')
-}
 </script>
 
 <template>
@@ -42,8 +31,21 @@ async function requestNim() {
     </div>
 
     <div class="actions">
-      <button class="nw-btn nw-btn-primary" type="button" @click="openProfile">View profile</button>
-      <button class="nw-btn nw-btn-secondary" type="button" @click="requestNim">
+      <button
+        class="nw-btn nw-btn-primary"
+        type="button"
+        @click="store.openNimConnectProfile(store.profile?.handle)"
+      >
+        View profile
+      </button>
+      <button class="nw-btn nw-btn-secondary" type="button" @click="store.openPaymentSheet({ mode: 'tip' })">
+        Tip NimWorld
+      </button>
+      <button
+        class="nw-btn nw-btn-secondary"
+        type="button"
+        @click="store.openPaymentSheet({ mode: 'request' })"
+      >
         Request NIM
       </button>
     </div>
@@ -55,6 +57,7 @@ async function requestNim() {
           <strong>{{ item.title }}</strong>
           <span>{{ item.description }}</span>
         </li>
+        <li v-if="!achievements.length" class="muted">No achievements loaded yet.</li>
       </ul>
     </section>
 
@@ -67,6 +70,7 @@ async function requestNim() {
             {{ item.portability === 'app-local' ? `Usable in ${item.usableIn?.join(', ')}` : 'Shared' }}
           </span>
         </li>
+        <li v-if="!inventory.length" class="muted">No inventory loaded yet.</li>
       </ul>
     </section>
   </div>
