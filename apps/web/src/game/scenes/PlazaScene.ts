@@ -18,8 +18,12 @@ import {
   WORLD,
   type PlazaLocation,
 } from '@/game/world/locations'
-import { TERRAIN_TILESET_KEY } from '@/game/assets/loadTerrainTileset'
-import { ARRAY_FULL_GRASS } from '@/game/world/terrainTopology'
+import {
+  PATH_TILESET_KEY,
+  TERRAIN_TILESET_KEY,
+  WATER_TILESET_KEY,
+} from '@/game/assets/loadTerrainTileset'
+import { ARRAY_FULL_LOWER, ARRAY_FULL_UPPER } from '@/game/world/terrainTopology'
 import { buildPlazaTerrainGrid } from '@/game/world/plazaTerrainMap'
 import { resolveTerrainLayer, type CellPredicate } from '@/game/world/terrainResolver'
 import {
@@ -206,25 +210,35 @@ export class PlazaScene extends Phaser.Scene {
     this.terrainGrid = buildPlazaTerrainGrid()
 
     /**
-     * Every Wang layer is opaque — it paints the lower terrain wherever the
+     * Every Wang layer is opaque — it paints its lower terrain wherever the
      * upper one is absent — so stacked layers would occlude each other.
-     * Layers above the base blank their full-lower tiles to -1 (Phaser's only
+     * Layers above the base blank their all-grass tile to -1 (Phaser's only
      * "empty" index) and show through. Transition tiles still carry a little
      * grass, which is why the canal sits well clear of the paved area.
+     *
+     * `blankIndex` is which array index is all-grass, and that differs by sheet:
+     * the water sheet has grass as its *upper* terrain, the inverse of the
+     * stone and path sheets. See the tileset READMEs under assets/art/tiles/.
      */
-    const makeWangLayer = (isUpper: CellPredicate, depth: number, opaque = false) => {
+    const makeWangLayer = (
+      tilesetKey: string,
+      isUpper: CellPredicate,
+      depth: number,
+      blankIndex: number | null,
+    ) => {
       const indexes = resolveTerrainLayer(this.terrainGrid, isUpper)
-      const data = opaque
-        ? indexes
-        : indexes.map((row) => row.map((i) => (i === ARRAY_FULL_GRASS ? -1 : i)))
+      const data =
+        blankIndex === null
+          ? indexes
+          : indexes.map((row) => row.map((i) => (i === blankIndex ? -1 : i)))
       const map = this.make.tilemap({
         data,
         tileWidth: TERRAIN_TILE,
         tileHeight: TERRAIN_TILE,
       })
       const tileset = map.addTilesetImage(
-        TERRAIN_TILESET_KEY,
-        TERRAIN_TILESET_KEY,
+        tilesetKey,
+        tilesetKey,
         TERRAIN_TILE,
         TERRAIN_TILE,
         0,
@@ -232,33 +246,24 @@ export class PlazaScene extends Phaser.Scene {
       )
       if (!tileset) {
         throw new Error(
-          `Plaza terrain tileset missing: expected texture key "${TERRAIN_TILESET_KEY}" (preload loadTerrainTileset?)`,
+          `Plaza terrain tileset missing: expected texture key "${tilesetKey}" (preload loadTerrainTileset?)`,
         )
       }
       const layer = map.createLayer(0, tileset, 0, 0)
       if (!layer) {
-        throw new Error(
-          `Plaza terrain TilemapLayer failed to create for tileset "${TERRAIN_TILESET_KEY}"`,
-        )
+        throw new Error(`Plaza terrain TilemapLayer failed to create for tileset "${tilesetKey}"`)
       }
       layer.setDepth(depth)
       return layer
     }
 
-    // Painter order: water below, then path, then stone on top.
-    // ponytail: C1 renders all three layers from the single existing stone
-    // tileset, tinted. C2 swaps in the real water and path tilesets.
-    // Opaque grass base, then transparent overlays bottom-up. The base exists
-    // because a tint applies to a whole layer — folding grass into the water
-    // layer would dye the grass blue.
-    // ponytail: C1 draws all four layers from the one existing stone tileset,
-    // tinted. C2 swaps in the real water and path tilesets and drops the tints.
-    // Tints are multiplies over blue-grey stone, so they can only darken —
-    // hence the high-luminance path tint rather than a literal sand colour.
-    makeWangLayer(() => false, 0, true)
-    makeWangLayer(isWater, 0.1).setTint(0x4a86c4)
-    makeWangLayer(isPath, 0.2).setTint(0xd4a878)
-    makeWangLayer(isStoneFamily, 0.3)
+    // Painter order: opaque grass base, then water, path, and stone above it.
+    // The base is a separate layer because each overlay only reaches as far as
+    // its own transition tiles; grass elsewhere has nothing else to paint it.
+    makeWangLayer(TERRAIN_TILESET_KEY, () => false, 0, null)
+    makeWangLayer(WATER_TILESET_KEY, (cell) => !isWater(cell), 0.1, ARRAY_FULL_UPPER)
+    makeWangLayer(PATH_TILESET_KEY, isPath, 0.2, ARRAY_FULL_LOWER)
+    makeWangLayer(TERRAIN_TILESET_KEY, isStoneFamily, 0.3, ARRAY_FULL_LOWER)
 
     // Soft blue-hour vignette
     const fog = this.add.graphics().setDepth(4)
