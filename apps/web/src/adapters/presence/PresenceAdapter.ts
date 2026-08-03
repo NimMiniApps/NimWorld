@@ -11,6 +11,12 @@ export interface PlazaActor {
   waypoints?: WorldPosition[]
   /** Character sheet hint: a–e maps to role colors. */
   sheet?: 'a' | 'b' | 'c' | 'd' | 'e'
+  /** Demo/public Nimiq address when this actor can receive NIM. */
+  address?: string
+}
+
+export function isPayableActor(actor: { address?: string }): boolean {
+  return Boolean(actor.address?.trim())
 }
 
 export interface PresenceAdapter {
@@ -83,6 +89,7 @@ export class LocalPresenceAdapter implements PresenceAdapter {
         statusLabel: 'Active 12 min ago',
         position: { x: 540, y: 250 },
         color: 0xffd166,
+        address: 'NQ11 LUNA DEMO 0000 0000 0000 0000 0000 0000',
       },
       {
         id: 'ghost-pixel',
@@ -91,6 +98,7 @@ export class LocalPresenceAdapter implements PresenceAdapter {
         statusLabel: 'Recently visited',
         position: { x: 620, y: 500 },
         color: 0xff8fab,
+        address: 'NQ22 PIXL DEMO 0000 0000 0000 0000 0000 0000',
       },
       {
         id: 'ghost-nova',
@@ -99,6 +107,7 @@ export class LocalPresenceAdapter implements PresenceAdapter {
         statusLabel: 'Friend · Playing NimBomber',
         position: { x: 300, y: 450 },
         color: 0x7cf5c8,
+        address: 'NQ33 NOVA DEMO 0000 0000 0000 0000 0000 0000',
       },
     ]
   }
