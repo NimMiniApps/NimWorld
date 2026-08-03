@@ -97,7 +97,7 @@ function onFirstMove() {
 
       <footer class="bottom">
         <VirtualJoystick />
-        <p class="hint" :class="{ faded: !showMoveHint }">Enter / tap prompt to interact</p>
+        <p class="hint" :class="{ faded: !showMoveHint }">Walk up to a landmark to enter</p>
       </footer>
     </template>
 
