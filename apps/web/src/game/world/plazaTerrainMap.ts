@@ -58,29 +58,72 @@ function stampLandingPad(
   }
 }
 
-/** Quadratic Bezier ribbon with organic bulge / jitter. */
-function stampCurve(
+/**
+ * Snap a road axis so a band of `width` cells lands on exactly that many cells.
+ * Odd widths straddle a cell, even widths straddle the seam between two.
+ */
+function snapAxis(axis: number, width: number): number {
+  return width % 2 === 0 ? Math.round(axis - 0.5) + 0.5 : Math.round(axis)
+}
+
+/**
+ * Stamp a straight road `width` cells wide between two world-space points.
+ *
+ * Rasterized by perpendicular distance rather than by stamping a brush along
+ * the line: a brush rounds its position to a cell at every step, so its edges
+ * alternate between full and narrow runs and the road reads as a torn ribbon.
+ *
+ * A road renders one display tile wider than its cell count, because the Wang
+ * layer needs a transition tile on each side. `width: 2` is the narrowest road
+ * with a solid core — at width 1 every tile is a transition and the road has
+ * no middle.
+ */
+function stampRoad(
   grid: TerrainCell[][],
   x0: number,
   y0: number,
   x1: number,
   y1: number,
-  bulge: number,
-  halfWidth: number,
+  width: number,
   value: TerrainCell,
-  steps = 28,
 ): void {
-  const tile = TERRAIN_TILE
-  const xc = (x0 + x1) / 2 + bulge
-  const yc = (y0 + y1) / 2 - Math.abs(bulge) * 0.22
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps
-    const x = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * xc + t * t * x1
-    const y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * yc + t * t * y1
-    const jitter = Math.sin(i * 1.7 + bulge * 0.01) * 6
-    const col = Math.round((x + jitter) / tile)
-    const row = Math.round(y / tile)
-    stampDisk(grid, col, row, halfWidth, value)
+  let ax = x0 / TERRAIN_TILE
+  let ay = y0 / TERRAIN_TILE
+  let bx = x1 / TERRAIN_TILE
+  let by = y1 / TERRAIN_TILE
+
+  // Straighten near-axis-aligned roads. The Arena and Marketplace sit one cell
+  // off the hub's row, which rasterizes as a single jog partway along an
+  // otherwise straight avenue — worse than the 32px of drift it corrects.
+  if (Math.abs(by - ay) < 1.5) {
+    ay = by = snapAxis(ay, width)
+  } else if (Math.abs(bx - ax) < 1.5) {
+    ax = bx = snapAxis(ax, width)
+  }
+
+  const dx = bx - ax
+  const dy = by - ay
+  const len2 = dx * dx + dy * dy
+  if (len2 === 0) return
+
+  // A cell is road when the band covers its center. Measuring to the center
+  // rather than to the cell's near edge is what keeps a diagonal road
+  // connected: its neighbours sit 0.707 out, so a tighter reach leaves holes.
+  const reach = width / 2
+  const margin = Math.ceil(reach) + 1
+  const c0 = Math.max(0, Math.floor(Math.min(ax, bx) - margin))
+  const c1 = Math.min(TERRAIN_COLS - 1, Math.ceil(Math.max(ax, bx) + margin))
+  const r0 = Math.max(0, Math.floor(Math.min(ay, by) - margin))
+  const r1 = Math.min(TERRAIN_ROWS - 1, Math.ceil(Math.max(ay, by) + margin))
+
+  for (let r = r0; r <= r1; r++) {
+    for (let c = c0; c <= c1; c++) {
+      // Squared-off ends: the hub disk and the landing pads cover the joins.
+      const t = ((c - ax) * dx + (r - ay) * dy) / len2
+      if (t < 0 || t > 1) continue
+      if (Math.hypot(c - (ax + t * dx), r - (ay + t * dy)) > reach) continue
+      grid[r]![c] = value
+    }
   }
 }
 
@@ -157,7 +200,17 @@ export function floodReachable(
 }
 
 /** Hub radius in cells. */
-const HUB_RADIUS = 5
+const HUB_RADIUS = 4
+/** Cardinal avenue width in cells. Renders one display tile wider — see `stampRoad`. */
+const SPOKE_WIDTH = 3
+/**
+ * Diagonal roads are stamped a cell narrower. A diagonal band covers roughly
+ * √2 more cells per row than a cardinal one of the same width, so matching the
+ * numbers would make the diagonals read as wedges rather than as roads.
+ */
+const DIAGONAL_WIDTH = 2
+/** How far the south approach runs past SPAWN_POINT, toward the Harbor tease. */
+const SOUTH_APPROACH_RUN = 96
 /** Canal ellipse, in cells from the center cell. Outside it is water. */
 const CANAL_RX = 16
 const CANAL_RY = 11.5
@@ -176,33 +229,37 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
   stampOutsideEllipse(grid, center.c, center.r, CANAL_RX, CANAL_RY, TERRAIN_WATER)
 
   // Spokes: straight paths from hub edge to each landmark.
-  const spokes: Array<{ id: string; pad: { w: number; h: number }; kind: TerrainCell }> = [
-    { id: 'arcade', pad: { w: 5, h: 3 }, kind: TERRAIN_ENTRANCE },
-    { id: 'arena', pad: { w: 4, h: 3 }, kind: TERRAIN_ENTRANCE },
-    { id: 'marketplace', pad: { w: 2, h: 2 }, kind: TERRAIN_CONSTRUCTION },
-    { id: 'social-club', pad: { w: 3, h: 2 }, kind: TERRAIN_ENTRANCE },
-    { id: 'town-hall', pad: { w: 3, h: 3 }, kind: TERRAIN_ENTRANCE },
+  const spokes: Array<{
+    id: string
+    pad: { w: number; h: number }
+    kind: TerrainCell
+    width: number
+  }> = [
+    { id: 'arcade', pad: { w: 5, h: 3 }, kind: TERRAIN_ENTRANCE, width: SPOKE_WIDTH },
+    { id: 'arena', pad: { w: 4, h: 3 }, kind: TERRAIN_ENTRANCE, width: SPOKE_WIDTH },
+    { id: 'marketplace', pad: { w: 2, h: 2 }, kind: TERRAIN_CONSTRUCTION, width: SPOKE_WIDTH },
+    { id: 'social-club', pad: { w: 3, h: 2 }, kind: TERRAIN_ENTRANCE, width: DIAGONAL_WIDTH },
+    { id: 'town-hall', pad: { w: 3, h: 3 }, kind: TERRAIN_ENTRANCE, width: DIAGONAL_WIDTH },
   ]
 
-  for (const { id, pad, kind } of spokes) {
+  for (const { id, pad, kind, width } of spokes) {
     const loc = LOCATIONS.find((l) => l.id === id)!
-    // bulge 0 → straight spoke.
-    stampCurve(grid, PLAZA_CENTER.x, PLAZA_CENTER.y, loc.x, loc.y, 0, 1, TERRAIN_PATH, 32)
+    stampRoad(grid, PLAZA_CENTER.x, PLAZA_CENTER.y, loc.x, loc.y, width, TERRAIN_PATH)
     const cell = toCell(loc.x, loc.y)
     stampLandingPad(grid, cell.c, cell.r, pad.w, pad.h, kind)
   }
 
-  // Spawn approach — a sixth spoke running south from the hub.
-  stampCurve(
+  // Spawn approach — a sixth spoke running south from the hub. It runs well
+  // past SPAWN_POINT, which sits on the hub itself: a road that stopped there
+  // would be swallowed whole by the hub disk.
+  stampRoad(
     grid,
     PLAZA_CENTER.x,
     PLAZA_CENTER.y,
     SPAWN_POINT.x,
-    SPAWN_POINT.y,
-    0,
-    1,
+    SPAWN_POINT.y + SOUTH_APPROACH_RUN,
+    SPOKE_WIDTH,
     TERRAIN_PATH,
-    16,
   )
 
   // Hub last so it always reads as one clean disk over the spoke stubs.

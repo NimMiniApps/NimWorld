@@ -138,6 +138,31 @@ describe('plazaTerrainMap', () => {
     expect(paths).toBeGreaterThan(60)
   })
 
+  it('runs the south approach clear of the hub', () => {
+    const grid = buildPlazaTerrainGrid()
+    const fc = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)
+    // Walking south from the center, the first cell past the hub must be road.
+    // SPAWN_POINT sits on the hub itself, so a spoke that stopped there would
+    // be stamped over by the hub disk and vanish without failing any test.
+    let r = fc.r
+    while (r < TERRAIN_ROWS && isStoneFamily(grid[r]![fc.c]!)) r++
+    expect(isPath(grid[r]![fc.c]!), 'south approach leaves the hub as path').toBe(true)
+  })
+
+  it('centers the north avenue on the Arcade instead of jogging past it', () => {
+    const grid = buildPlazaTerrainGrid()
+    const arcade = LOCATIONS.find((l) => l.id === 'arcade')!
+    const cell = toCell(arcade.x, arcade.y)
+
+    let row = cell.r
+    while (row < TERRAIN_ROWS && !isPath(grid[row]![cell.c]!)) row++
+    expect(row, 'north avenue found below the Arcade pad').toBeLessThan(TERRAIN_ROWS)
+
+    const cols = grid[row]!.flatMap((v, c) => (isPath(v) && Math.abs(c - cell.c) <= 4 ? [c] : []))
+    expect(cols.length).toBeGreaterThan(0)
+    expect((Math.min(...cols) + Math.max(...cols)) / 2, 'avenue straddles the pad').toBe(cell.c)
+  })
+
   it('keeps water out of the hub and off every spoke', () => {
     const grid = buildPlazaTerrainGrid()
     const fc = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)

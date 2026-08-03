@@ -203,6 +203,25 @@ Each phase gets its own implementation plan.
 
 C1 lands with tests green and zero credits spent, so the new ground plan can be reviewed in placeholder colors before any art is commissioned.
 
+## Correction after C2 review
+
+The spokes shipped in C1 read as slabs rather than roads. Three causes, all in
+`plazaTerrainMap.ts`, all fixed before C3:
+
+1. `stampCurve` painted by stamping a brush along the line and rounding to a cell at
+   every step, so road edges alternated between full and narrow runs. Replaced by
+   `stampRoad`, which rasterizes by perpendicular distance and has clean edges at any
+   angle. The Bezier bulge and jitter went with it — every spoke was straight.
+2. The hub disk at radius 5 left only 2–3 cells between itself and each landing pad, so
+   no spoke was long enough to read as an avenue. Hub is now radius 4.
+3. The south approach ran from the center to `SPAWN_POINT`, which sits exactly
+   `HUB_RADIUS` away — the hub disk, stamped last, erased it entirely. It now runs past
+   the spawn toward the Harbor.
+
+Cardinal avenues are 3 cells, diagonals 2: a diagonal band covers ~√2 more cells per row,
+so equal numbers make the diagonals read as wedges. A road renders one display tile wider
+than its cell count, since the Wang layer needs a transition tile on each side.
+
 ## Relationship to the product roadmap
 
 Art Pass C is orthogonal to `docs/ROADMAP.md` Phases 1–5 and can proceed in parallel. It does not depend on backend work, real presence, or real NimConnect data, and it must not introduce mock surfaces for features those phases own.
