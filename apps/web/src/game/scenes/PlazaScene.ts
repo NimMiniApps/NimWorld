@@ -19,9 +19,17 @@ import {
   type PlazaLocation,
 } from '@/game/world/locations'
 import { TERRAIN_TILESET_KEY } from '@/game/assets/loadTerrainTileset'
+import { ARRAY_FULL_GRASS } from '@/game/world/terrainTopology'
 import { buildPlazaTerrainGrid } from '@/game/world/plazaTerrainMap'
-import { resolveTerrainLayer } from '@/game/world/terrainResolver'
-import { TERRAIN_TILE } from '@/game/world/terrainTypes'
+import { resolveTerrainLayer, type CellPredicate } from '@/game/world/terrainResolver'
+import {
+  TERRAIN_TILE,
+  isPath,
+  isStoneFamily,
+  isWater,
+  type TerrainCell,
+} from '@/game/world/terrainTypes'
+import { buildBlockingRects } from '@/game/world/terrainCollision'
 import { getLocationToAutoOpen } from '@/game/world/locationEntry'
 
 export interface PlazaSceneData {
@@ -63,7 +71,7 @@ export class PlazaScene extends Phaser.Scene {
   private unsubUi: (() => boolean) | null = null
   private readonly speed = 155
   private hasMoved = false
-  private waterTiles: Phaser.GameObjects.Image[] = []
+  private terrainGrid: TerrainCell[][] = []
   private flags: Phaser.GameObjects.Image[] = []
   private trees: Phaser.GameObjects.Image[] = []
 
@@ -195,44 +203,62 @@ export class PlazaScene extends Phaser.Scene {
   private paintEnvironment() {
     // Opaque Wang terrain covering all cells (grass + stone transitions).
     // Phaser ARRAY_2D: empty is -1 only; index 0 is a real sheet frame (firstgid 0).
-    const indexes = resolveTerrainLayer(buildPlazaTerrainGrid())
-    const map = this.make.tilemap({
-      data: indexes,
-      tileWidth: TERRAIN_TILE,
-      tileHeight: TERRAIN_TILE,
-    })
-    const tileset = map.addTilesetImage(
-      TERRAIN_TILESET_KEY,
-      TERRAIN_TILESET_KEY,
-      TERRAIN_TILE,
-      TERRAIN_TILE,
-      0,
-      0,
-    )
-    if (!tileset) {
-      throw new Error(
-        `Plaza terrain tileset missing: expected texture key "${TERRAIN_TILESET_KEY}" (preload loadTerrainTileset?)`,
-      )
-    }
-    const layer = map.createLayer(0, tileset, 0, 0)
-    if (!layer) {
-      throw new Error(
-        `Plaza terrain TilemapLayer failed to create for tileset "${TERRAIN_TILESET_KEY}"`,
-      )
-    }
-    layer.setDepth(0)
+    this.terrainGrid = buildPlazaTerrainGrid()
 
-    // Rim water only (ponds / channels) — not a solid frame everywhere
-    const waterBand = [
-      ...this.rectBand(0, 0, WORLD.width, 40),
-      ...this.rectBand(0, WORLD.height - 48, WORLD.width, 48),
-      ...this.rectBand(0, 40, 40, WORLD.height - 88),
-      ...this.rectBand(WORLD.width - 40, 40, 40, WORLD.height - 88),
-    ]
-    for (const [x, y] of waterBand) {
-      const tile = this.add.image(x, y, 'tile-water').setDepth(1)
-      this.waterTiles.push(tile)
+    /**
+     * Every Wang layer is opaque — it paints the lower terrain wherever the
+     * upper one is absent — so stacked layers would occlude each other.
+     * Layers above the base blank their full-lower tiles to -1 (Phaser's only
+     * "empty" index) and show through. Transition tiles still carry a little
+     * grass, which is why the canal sits well clear of the paved area.
+     */
+    const makeWangLayer = (isUpper: CellPredicate, depth: number, opaque = false) => {
+      const indexes = resolveTerrainLayer(this.terrainGrid, isUpper)
+      const data = opaque
+        ? indexes
+        : indexes.map((row) => row.map((i) => (i === ARRAY_FULL_GRASS ? -1 : i)))
+      const map = this.make.tilemap({
+        data,
+        tileWidth: TERRAIN_TILE,
+        tileHeight: TERRAIN_TILE,
+      })
+      const tileset = map.addTilesetImage(
+        TERRAIN_TILESET_KEY,
+        TERRAIN_TILESET_KEY,
+        TERRAIN_TILE,
+        TERRAIN_TILE,
+        0,
+        0,
+      )
+      if (!tileset) {
+        throw new Error(
+          `Plaza terrain tileset missing: expected texture key "${TERRAIN_TILESET_KEY}" (preload loadTerrainTileset?)`,
+        )
+      }
+      const layer = map.createLayer(0, tileset, 0, 0)
+      if (!layer) {
+        throw new Error(
+          `Plaza terrain TilemapLayer failed to create for tileset "${TERRAIN_TILESET_KEY}"`,
+        )
+      }
+      layer.setDepth(depth)
+      return layer
     }
+
+    // Painter order: water below, then path, then stone on top.
+    // ponytail: C1 renders all three layers from the single existing stone
+    // tileset, tinted. C2 swaps in the real water and path tilesets.
+    // Opaque grass base, then transparent overlays bottom-up. The base exists
+    // because a tint applies to a whole layer — folding grass into the water
+    // layer would dye the grass blue.
+    // ponytail: C1 draws all four layers from the one existing stone tileset,
+    // tinted. C2 swaps in the real water and path tilesets and drops the tints.
+    // Tints are multiplies over blue-grey stone, so they can only darken —
+    // hence the high-luminance path tint rather than a literal sand colour.
+    makeWangLayer(() => false, 0, true)
+    makeWangLayer(isWater, 0.1).setTint(0x4a86c4)
+    makeWangLayer(isPath, 0.2).setTint(0xd4a878)
+    makeWangLayer(isStoneFamily, 0.3)
 
     // Soft blue-hour vignette
     const fog = this.add.graphics().setDepth(4)
@@ -243,16 +269,6 @@ export class PlazaScene extends Phaser.Scene {
     fog.fillStyle(0x0b1228, 0.12)
     fog.fillRect(0, 0, 48, WORLD.height)
     fog.fillRect(WORLD.width - 48, 0, 48, WORLD.height)
-  }
-
-  private rectBand(x: number, y: number, w: number, h: number) {
-    const pts: Array<[number, number]> = []
-    for (let yy = y; yy < y + h; yy += 32) {
-      for (let xx = x; xx < x + w; xx += 32) {
-        pts.push([xx + 16, yy + 16])
-      }
-    }
-    return pts
   }
 
   private placeDecor() {
@@ -600,6 +616,23 @@ export class PlazaScene extends Phaser.Scene {
       walls.add(body)
     }
     this.physics.add.collider(this.player.sprite, walls)
+
+    // Impassable terrain (the canal). Run-merged so the ring costs tens of
+    // bodies, not hundreds.
+    const blocking = this.physics.add.staticGroup()
+    for (const rect of buildBlockingRects(this.terrainGrid)) {
+      const body = this.add.rectangle(
+        rect.x + rect.width / 2,
+        rect.y + rect.height / 2,
+        rect.width,
+        rect.height,
+        0x000000,
+        0,
+      )
+      this.physics.add.existing(body, true)
+      blocking.add(body)
+    }
+    this.physics.add.collider(this.player.sprite, blocking)
   }
 
   private handleUi(command: UiCommand) {
@@ -663,7 +696,6 @@ export class PlazaScene extends Phaser.Scene {
     this.updateProximity()
     this.updateAmbient()
     this.updateLabels()
-    this.animateWater()
   }
 
   private updateProximity() {
@@ -804,14 +836,6 @@ export class PlazaScene extends Phaser.Scene {
       } else {
         actor.label.setAlpha(0)
       }
-    }
-  }
-
-  private animateWater() {
-    const t = this.time.now / 400
-    for (let i = 0; i < this.waterTiles.length; i++) {
-      const tile = this.waterTiles[i]!
-      tile.setAlpha(0.85 + Math.sin(t + i * 0.35) * 0.08)
     }
   }
 
