@@ -4,12 +4,16 @@ import {
   TERRAIN_COLS,
   TERRAIN_CONSTRUCTION,
   TERRAIN_ENTRANCE,
+  TERRAIN_PATH,
   TERRAIN_ROWS,
   TERRAIN_TILE,
+  TERRAIN_WATER,
+  isPath,
   isStoneFamily,
+  isWalkable,
   type TerrainCell,
 } from './terrainTypes'
-import { buildPlazaTerrainGrid, stoneFloodReachable } from './plazaTerrainMap'
+import { buildPlazaTerrainGrid, floodReachable } from './plazaTerrainMap'
 
 function toCell(x: number, y: number) {
   return {
@@ -78,30 +82,31 @@ describe('plazaTerrainMap', () => {
     expect(grid.every((row) => row.length === TERRAIN_COLS)).toBe(true)
   })
 
-  it('has a fountain forecourt larger than a thin ribbon', () => {
+  it('paves a circular hub around the fountain', () => {
     const grid = buildPlazaTerrainGrid()
     const fc = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)
     expect(isStoneFamily(grid[fc.r]![fc.c]!)).toBe(true)
-    // Disk radius 3 → up to 29 cells; a thin ribbon would be ~7–12
-    expect(countStoneInDisk(grid, fc.c, fc.r, 3)).toBeGreaterThan(12)
+    // Disk radius 5 → 81 cells; assert most of a radius-4 sample is stone.
+    expect(countStoneInDisk(grid, fc.c, fc.r, 4)).toBeGreaterThan(40)
   })
 
-  it('flood-fills stone family from forecourt to every landmark landing', () => {
+  it('reaches every landmark landing from the hub across stone and path', () => {
     const grid = buildPlazaTerrainGrid()
     const fc = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)
-    const reachable = stoneFloodReachable(grid, fc.c, fc.r)
+    const passable = (cell: TerrainCell) => isStoneFamily(cell) || isPath(cell)
+    const reachable = floodReachable(grid, fc.c, fc.r, passable)
 
-    const landings: Array<{ id: string; yBias: number; kinds: number[] }> = [
-      { id: 'arcade', yBias: 36, kinds: [TERRAIN_ENTRANCE] },
-      { id: 'arena', yBias: 36, kinds: [TERRAIN_ENTRANCE] },
-      { id: 'town-hall', yBias: 0, kinds: [TERRAIN_ENTRANCE] },
-      { id: 'social-club', yBias: 0, kinds: [TERRAIN_ENTRANCE] },
-      { id: 'marketplace', yBias: 36, kinds: [TERRAIN_CONSTRUCTION] },
+    const landings: Array<{ id: string; kinds: number[] }> = [
+      { id: 'arcade', kinds: [TERRAIN_ENTRANCE] },
+      { id: 'arena', kinds: [TERRAIN_ENTRANCE] },
+      { id: 'town-hall', kinds: [TERRAIN_ENTRANCE] },
+      { id: 'social-club', kinds: [TERRAIN_ENTRANCE] },
+      { id: 'marketplace', kinds: [TERRAIN_CONSTRUCTION] },
     ]
 
-    for (const { id, yBias, kinds } of landings) {
+    for (const { id, kinds } of landings) {
       const loc = LOCATIONS.find((l) => l.id === id)!
-      const near = toCell(loc.x, loc.y + yBias)
+      const near = toCell(loc.x, loc.y)
       const landing = findLandingNear(grid, near.c, near.r, new Set(kinds))
       expect(landing, `expected landing near ${id}`).not.toBeNull()
       expect(reachable.has(`${landing!.c},${landing!.r}`), `${id} landing reachable`).toBe(true)
@@ -111,26 +116,57 @@ describe('plazaTerrainMap', () => {
   it('gives each landmark a landing pad sized for its role', () => {
     const grid = buildPlazaTerrainGrid()
 
-    // Footprints clearly larger than a lone disk r=1–2 (5 / 12 cells).
-    const regions: Array<{
-      id: string
-      yBias: number
-      kind: number
-      minCells: number
-    }> = [
-      { id: 'arcade', yBias: 36, kind: TERRAIN_ENTRANCE, minCells: 15 }, // ~5×3
-      { id: 'arena', yBias: 36, kind: TERRAIN_ENTRANCE, minCells: 12 }, // ~4×3
-      { id: 'town-hall', yBias: 0, kind: TERRAIN_ENTRANCE, minCells: 9 }, // ~3×3
-      { id: 'social-club', yBias: 0, kind: TERRAIN_ENTRANCE, minCells: 6 }, // ~3×2
-      { id: 'marketplace', yBias: 36, kind: TERRAIN_CONSTRUCTION, minCells: 4 }, // ~2×2
+    const regions: Array<{ id: string; kind: number; minCells: number }> = [
+      { id: 'arcade', kind: TERRAIN_ENTRANCE, minCells: 15 }, // 5×3
+      { id: 'arena', kind: TERRAIN_ENTRANCE, minCells: 12 }, // 4×3
+      { id: 'town-hall', kind: TERRAIN_ENTRANCE, minCells: 9 }, // 3×3
+      { id: 'social-club', kind: TERRAIN_ENTRANCE, minCells: 6 }, // 3×2
+      { id: 'marketplace', kind: TERRAIN_CONSTRUCTION, minCells: 4 }, // 2×2
     ]
 
-    for (const { id, yBias, kind, minCells } of regions) {
+    for (const { id, kind, minCells } of regions) {
       const loc = LOCATIONS.find((l) => l.id === id)!
-      const near = toCell(loc.x, loc.y + yBias)
+      const near = toCell(loc.x, loc.y)
       const count = countKindNear(grid, near.c, near.r, kind)
       expect(count, `${id} landing cells`).toBeGreaterThanOrEqual(minCells)
     }
+  })
+
+  it('connects the hub to each landmark with a path spoke', () => {
+    const grid = buildPlazaTerrainGrid()
+    const paths = grid.flat().filter((c) => isPath(c)).length
+    expect(paths).toBeGreaterThan(60)
+  })
+
+  it('keeps water out of the hub and off every spoke', () => {
+    const grid = buildPlazaTerrainGrid()
+    const fc = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)
+    for (let dr = -5; dr <= 5; dr++) {
+      for (let dc = -5; dc <= 5; dc++) {
+        if (dc * dc + dr * dr > 25) continue
+        expect(grid[fc.r + dr]![fc.c + dc]).not.toBe(TERRAIN_WATER)
+      }
+    }
+    const pathCells = grid.flat().filter((c) => c === TERRAIN_PATH).length
+    const waterCells = grid.flat().filter((c) => c === TERRAIN_WATER).length
+    expect(pathCells).toBeGreaterThan(0)
+    expect(waterCells).toBeGreaterThan(0)
+  })
+
+  it('encloses the plaza with a canal the player cannot walk around', () => {
+    const grid = buildPlazaTerrainGrid()
+    const fc = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)
+    // Walking over any non-water cell from the hub must not reach the world edge.
+    const reachable = floodReachable(grid, fc.c, fc.r, isWalkable)
+    let touchesEdge = false
+    for (const key of reachable) {
+      const [c, r] = key.split(',').map(Number)
+      if (c === 0 || r === 0 || c === TERRAIN_COLS - 1 || r === TERRAIN_ROWS - 1) {
+        touchesEdge = true
+        break
+      }
+    }
+    expect(touchesEdge, 'canal ring has a gap to the world edge').toBe(false)
   })
 
   it('does not pave the entire world with stone', () => {

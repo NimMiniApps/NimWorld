@@ -1,13 +1,15 @@
 import { LOCATIONS, PLAZA_CENTER, SPAWN_POINT } from './locations'
+import type { CellPredicate } from './terrainResolver'
 import {
   TERRAIN_COLS,
   TERRAIN_CONSTRUCTION,
   TERRAIN_ENTRANCE,
+  TERRAIN_PATH,
   TERRAIN_PLAZA,
   TERRAIN_ROWS,
   TERRAIN_TILE,
+  TERRAIN_WATER,
   createEmptyTerrainGrid,
-  isStoneFamily,
   type TerrainCell,
 } from './terrainTypes'
 
@@ -82,6 +84,33 @@ function stampCurve(
   }
 }
 
+/**
+ * Fill everything outside an ellipse. Elliptical rather than circular because
+ * the world is wider than it is tall — a circle would leave large dead grass
+ * margins at the left and right edges.
+ *
+ * ponytail: fills to the world edge rather than stamping a fixed-width ring.
+ * A ring would need a second walkable-margin check to stop the player
+ * slipping behind it; "outside is water" is sealed by construction. The
+ * visible band is bounded by the camera, not by a thickness parameter.
+ */
+function stampOutsideEllipse(
+  grid: TerrainCell[][],
+  col: number,
+  row: number,
+  rx: number,
+  ry: number,
+  value: TerrainCell,
+): void {
+  for (let r = 0; r < TERRAIN_ROWS; r++) {
+    for (let c = 0; c < TERRAIN_COLS; c++) {
+      const dx = c - col
+      const dy = r - row
+      if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) >= 1) grid[r]![c] = value
+    }
+  }
+}
+
 function toCell(x: number, y: number) {
   return {
     c: Math.round(x / TERRAIN_TILE),
@@ -89,17 +118,18 @@ function toCell(x: number, y: number) {
   }
 }
 
-/** BFS over stone-family cells; keys are `"col,row"`. */
-export function stoneFloodReachable(
+/** BFS over cells matching `passable`; keys are `"col,row"`. */
+export function floodReachable(
   grid: TerrainCell[][],
   startCol: number,
   startRow: number,
+  passable: CellPredicate,
 ): Set<string> {
   const seen = new Set<string>()
   if (startRow < 0 || startCol < 0 || startRow >= grid.length || startCol >= grid[0]!.length) {
     return seen
   }
-  if (!isStoneFamily(grid[startRow]![startCol]!)) return seen
+  if (!passable(grid[startRow]![startCol]!)) return seen
 
   const queue: Array<[number, number]> = [[startCol, startRow]]
   seen.add(`${startCol},${startRow}`)
@@ -118,7 +148,7 @@ export function stoneFloodReachable(
       const key = `${nc},${nr}`
       if (seen.has(key)) continue
       if (nr < 0 || nc < 0 || nr >= grid.length || nc >= grid[0]!.length) continue
-      if (!isStoneFamily(grid[nr]![nc]!)) continue
+      if (!passable(grid[nr]![nc]!)) continue
       seen.add(key)
       queue.push([nc, nr])
     }
@@ -126,123 +156,57 @@ export function stoneFloodReachable(
   return seen
 }
 
+/** Hub radius in cells. */
+const HUB_RADIUS = 5
+/** Canal ellipse, in cells from the center cell. Outside it is water. */
+const CANAL_RX = 16
+const CANAL_RY = 11.5
+
 /**
- * Organic plaza terrain: fountain forecourt + routes + landmark landings.
+ * Circular hub with radial path spokes to each landmark, enclosed by a canal.
  * Semantic cells for Wang dual-grid sampling (not autotile masks).
  */
 export function buildPlazaTerrainGrid(): TerrainCell[][] {
   const grid = createEmptyTerrainGrid()
 
-  const fountain = LOCATIONS.find((l) => l.id === 'fountain')!
-  const arcade = LOCATIONS.find((l) => l.id === 'arcade')!
-  const arena = LOCATIONS.find((l) => l.id === 'arena')!
-  const market = LOCATIONS.find((l) => l.id === 'marketplace')!
-  const social = LOCATIONS.find((l) => l.id === 'social-club')!
-  const town = LOCATIONS.find((l) => l.id === 'town-hall')!
+  const center = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)
 
-  // Fountain forecourt — wider than ribbons
-  const fc = toCell(PLAZA_CENTER.x, PLAZA_CENTER.y)
-  stampDisk(grid, fc.c, fc.r, 3, TERRAIN_PLAZA)
-  stampDisk(grid, fc.c - 1, fc.r + 1, 2, TERRAIN_PLAZA)
-  stampDisk(grid, fc.c + 1, fc.r - 1, 2, TERRAIN_PLAZA)
+  // Canal first — everything paved afterwards wins over water, which
+  // guarantees no spoke or landing can be drowned by the ring.
+  stampOutsideEllipse(grid, center.c, center.r, CANAL_RX, CANAL_RY, TERRAIN_WATER)
 
-  // Spawn approach
+  // Spokes: straight paths from hub edge to each landmark.
+  const spokes: Array<{ id: string; pad: { w: number; h: number }; kind: TerrainCell }> = [
+    { id: 'arcade', pad: { w: 5, h: 3 }, kind: TERRAIN_ENTRANCE },
+    { id: 'arena', pad: { w: 4, h: 3 }, kind: TERRAIN_ENTRANCE },
+    { id: 'marketplace', pad: { w: 2, h: 2 }, kind: TERRAIN_CONSTRUCTION },
+    { id: 'social-club', pad: { w: 3, h: 2 }, kind: TERRAIN_ENTRANCE },
+    { id: 'town-hall', pad: { w: 3, h: 3 }, kind: TERRAIN_ENTRANCE },
+  ]
+
+  for (const { id, pad, kind } of spokes) {
+    const loc = LOCATIONS.find((l) => l.id === id)!
+    // bulge 0 → straight spoke.
+    stampCurve(grid, PLAZA_CENTER.x, PLAZA_CENTER.y, loc.x, loc.y, 0, 1, TERRAIN_PATH, 32)
+    const cell = toCell(loc.x, loc.y)
+    stampLandingPad(grid, cell.c, cell.r, pad.w, pad.h, kind)
+  }
+
+  // Spawn approach — a sixth spoke running south from the hub.
   stampCurve(
     grid,
+    PLAZA_CENTER.x,
+    PLAZA_CENTER.y,
     SPAWN_POINT.x,
     SPAWN_POINT.y,
-    fountain.x,
-    fountain.y + 24,
-    18,
+    0,
     1,
-    TERRAIN_PLAZA,
-    22,
+    TERRAIN_PATH,
+    16,
   )
 
-  // Arcade — north, largest entrance pad (~5×3)
-  stampCurve(
-    grid,
-    fountain.x,
-    fountain.y - 10,
-    arcade.x + 8,
-    arcade.y + 36,
-    -22,
-    1,
-    TERRAIN_PLAZA,
-    26,
-  )
-  {
-    const pad = toCell(arcade.x, arcade.y + 40)
-    stampLandingPad(grid, pad.c, pad.r, 5, 3, TERRAIN_ENTRANCE)
-  }
-
-  // Arena — NW, broader formal pad (~4×3)
-  stampCurve(
-    grid,
-    fountain.x - 16,
-    fountain.y,
-    arena.x + 20,
-    arena.y + 28,
-    -48,
-    1,
-    TERRAIN_PLAZA,
-    24,
-  )
-  {
-    const pad = toCell(arena.x + 8, arena.y + 34)
-    stampLandingPad(grid, pad.c, pad.r, 4, 3, TERRAIN_ENTRANCE)
-  }
-
-  // Marketplace — NE, modest construction pad (~2×2)
-  stampCurve(
-    grid,
-    fountain.x + 18,
-    fountain.y,
-    market.x - 16,
-    market.y + 30,
-    52,
-    1,
-    TERRAIN_PLAZA,
-    24,
-  )
-  {
-    const pad = toCell(market.x - 4, market.y + 36)
-    stampLandingPad(grid, pad.c, pad.r, 2, 2, TERRAIN_CONSTRUCTION)
-  }
-
-  // Social Club — SW, smaller warmer pad (~3×2)
-  stampCurve(
-    grid,
-    fountain.x - 8,
-    fountain.y + 16,
-    social.x + 12,
-    social.y - 10,
-    36,
-    1,
-    TERRAIN_PLAZA,
-    24,
-  )
-  {
-    const pad = toCell(social.x + 4, social.y - 8)
-    stampLandingPad(grid, pad.c, pad.r, 3, 2, TERRAIN_ENTRANCE)
-  }
-
-  // Town Hall — SE, clean civic pad (~3×3)
-  stampCurve(
-    grid,
-    fountain.x + 10,
-    fountain.y + 18,
-    town.x - 10,
-    town.y - 12,
-    -40,
-    1,
-    TERRAIN_PLAZA,
-    24,
-  )
-  {
-    const pad = toCell(town.x - 6, town.y - 10)
-    stampLandingPad(grid, pad.c, pad.r, 3, 3, TERRAIN_ENTRANCE)
-  }
+  // Hub last so it always reads as one clean disk over the spoke stubs.
+  stampDisk(grid, center.c, center.r, HUB_RADIUS, TERRAIN_PLAZA)
 
   return grid
 }
