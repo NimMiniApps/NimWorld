@@ -1,11 +1,31 @@
+<script setup lang="ts">
+import { usePlazaStore } from '@/stores/plazaStore'
+
+const store = usePlazaStore()
+</script>
+
 <template>
   <div class="stack">
-    <p class="display title">Construction</p>
-    <p class="eyebrow">Opening Soon</p>
+    <p class="display title">Marketplace</p>
+    <p class="eyebrow">Payments open · trading soon</p>
     <p class="muted">
-      The Marketplace is under construction. When it opens, it will host handles, cosmetics,
-      collectibles, and app-specific items with explicit trading permissions.
+      Tip the NimWorld jar or copy a NIM request link. Handles, cosmetics, and collectibles
+      trading stay under construction.
     </p>
+
+    <div class="actions">
+      <button class="nw-btn nw-btn-primary" type="button" @click="store.openPaymentSheet({ mode: 'tip' })">
+        Tip NimWorld
+      </button>
+      <button
+        class="nw-btn nw-btn-secondary"
+        type="button"
+        @click="store.openPaymentSheet({ mode: 'request' })"
+      >
+        Request NIM
+      </button>
+    </div>
+
     <ul>
       <li>Handles</li>
       <li>Cosmetics</li>
@@ -41,6 +61,12 @@
   margin: 0;
   color: var(--nw-muted);
   line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
 }
 
 .hint {
