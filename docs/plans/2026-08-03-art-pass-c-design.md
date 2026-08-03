@@ -129,11 +129,11 @@ O  = circular stone hub, fountain at center
 
 Landmarks are repositioned onto the compass. `locations.ts` coordinate changes break assertions in `locations.test.ts` and `plazaTerrainMap.test.ts`; updating those is part of the work.
 
-### Bridges and passability
+### Passability
 
-Each spoke crosses the canal. Two options exist; **bridges** are chosen over canal gaps because a gap makes the ring read as a broken decoration rather than as water the plaza sits inside.
+The canal sits **outside** the landmark band, so no spoke crosses it and no bridges are needed. This is a correction to the earlier sketch: with landmarks at ~9.5 cells from center and the canal at ~11.5, the water is a border element that encloses the plaza, exactly as it reads in the mockup. Dropping bridges removes a whole mechanism from C1.
 
-A bridge is a prop sprite plus a strip of `TERRAIN_PATH` cells stamped over the water at the crossing. Water cells are impassable; path cells are passable.
+For the same reason there is **no `TERRAIN_WALL` cell type**. The border wall is decorative props (C3) plus the existing world bounds; water is the only terrain that blocks. One blocking family is enough, and adding a second now would be speculative.
 
 **This requires new collision.** `PlazaScene` currently collides only against per-landmark rectangles (`this.physics.add.collider(this.player.sprite, walls)`) and world bounds — terrain is not collidable, and grass is freely walkable today. Water and the border wall are the first terrain that must block movement.
 
@@ -176,16 +176,16 @@ No new panels. Desktop renders the same layout with more spacing.
 
 ## Verification
 
-`terrainQa.ts` already flood-fills stone reachability via `stoneFloodReachable`. It generalizes the same way the resolver does — take a passability predicate instead of hardcoding `isStoneFamily`.
+Reachability flood-fill lives in `plazaTerrainMap.ts` as `stoneFloodReachable`, not in `terrainQa.ts` — `terrainQa.ts` is *image* QA over decoded tileset pixels and is untouched by this pass. `stoneFloodReachable` generalizes the same way the resolver does: take a passability predicate instead of hardcoding `isStoneFamily`.
 
 QA assertions for the new layout:
 
-1. Every landmark landing pad is reachable from `SPAWN_POINT` across stone ∪ path ∪ bridge cells.
-2. No water cell falls inside the hub disk.
-3. The wall band never seals a spoke — removing all non-path cells still leaves each landmark reachable.
-4. Every spoke crossing the canal has a bridge strip; no spoke terminates in water.
+1. Every landmark landing pad is reachable from `SPAWN_POINT` across stone ∪ path cells.
+2. No water cell falls inside the hub disk or on any spoke.
+3. The canal ring is closed — it fully encloses the plaza.
+4. Grid dimensions and world bounds agree.
 
-Existing tests updated: `locations.test.ts`, `plazaTerrainMap.test.ts`, `terrainResolver.test.ts` (new predicate arg), `terrainQa.test.ts`, `terrainTypes.test.ts`, `artManifest.test.ts`.
+Tests updated: `terrainTypes.test.ts` (new constants, new grid size), `plazaTerrainMap.test.ts` (new layout), plus a new `terrainCollision.test.ts`. `terrainResolver.test.ts` is left untouched by making the new predicate an **optional** parameter defaulting to `isStoneFamily` — roughly 25 existing call sites keep working unchanged. `locations.test.ts` asserts only interaction radii and is unaffected by repositioning.
 
 ---
 
