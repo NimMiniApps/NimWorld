@@ -26,10 +26,10 @@ export interface FutureLandmark {
   collideH: number
 }
 
-/** Compact world bounds — physics / scroll limits. */
+/** Compact world bounds — physics / scroll limits. Matches the 36×27 terrain grid. */
 export const WORLD = {
-  width: 960,
-  height: 720,
+  width: 1152,
+  height: 864,
   padding: 24,
 }
 
@@ -39,11 +39,11 @@ export const WORLD = {
  * Sized so the player never sees the entire world at once.
  */
 export const VIEW_FRAME = {
-  width: 720,
-  height: 560,
+  width: 780,
+  height: 600,
 }
 
-export const PLAZA_CENTER = { x: 480, y: 360 }
+export const PLAZA_CENTER = { x: 576, y: 432 }
 
 /**
  * Organic composition: Arcade as largest rear landmark, Arena left,
@@ -67,8 +67,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'arcade',
     label: 'Arcade',
     interactionLabel: 'Open Arcade',
-    x: 478,
-    y: 168,
+    x: 576,
+    y: 150,
     radius: 52,
     collideW: 130,
     collideH: 78,
@@ -81,7 +81,7 @@ export const LOCATIONS: PlazaLocation[] = [
     label: 'Arena',
     interactionLabel: 'Enter Arena',
     x: 210,
-    y: 255,
+    y: 400,
     radius: 46,
     collideW: 96,
     collideH: 68,
@@ -93,8 +93,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'marketplace',
     label: 'Marketplace',
     interactionLabel: 'View Construction',
-    x: 760,
-    y: 255,
+    x: 942,
+    y: 400,
     radius: 42,
     collideW: 96,
     collideH: 58,
@@ -106,8 +106,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'social-club',
     label: 'Social Club',
     interactionLabel: 'Enter Social Club',
-    x: 240,
-    y: 530,
+    x: 300,
+    y: 660,
     radius: 42,
     collideW: 88,
     collideH: 58,
@@ -119,8 +119,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'town-hall',
     label: 'Town Hall',
     interactionLabel: 'Enter Town Hall',
-    x: 730,
-    y: 535,
+    x: 852,
+    y: 660,
     radius: 42,
     collideW: 90,
     collideH: 60,
@@ -130,7 +130,7 @@ export const LOCATIONS: PlazaLocation[] = [
   },
 ]
 
-export const SPAWN_POINT = { x: PLAZA_CENTER.x, y: PLAZA_CENTER.y + 78 }
+export const SPAWN_POINT = { x: PLAZA_CENTER.x, y: PLAZA_CENTER.y + 160 }
 
 /**
  * Future world landmarks — rim teases with in-world story copy.
@@ -139,8 +139,8 @@ export const SPAWN_POINT = { x: PLAZA_CENTER.x, y: PLAZA_CENTER.y + 78 }
 export const FUTURE_LANDMARKS: FutureLandmark[] = [
   {
     id: 'harbor',
-    x: 480,
-    y: 678,
+    x: 576,
+    y: 814,
     texture: 'prop-harbor-closed',
     title: 'Harbor',
     lines: ['Closed for repairs', 'Expected reopening soon'],
@@ -149,8 +149,8 @@ export const FUTURE_LANDMARKS: FutureLandmark[] = [
   },
   {
     id: 'mountain',
-    x: 480,
-    y: 42,
+    x: 576,
+    y: 50,
     texture: 'prop-mountain-gate',
     title: 'Mountain Trail',
     lines: ['Unsafe', 'Access restricted'],
@@ -159,8 +159,8 @@ export const FUTURE_LANDMARKS: FutureLandmark[] = [
   },
   {
     id: 'tunnel',
-    x: 48,
-    y: 360,
+    x: 58,
+    y: 432,
     texture: 'prop-tunnel',
     title: 'Old Tunnel',
     lines: ['Sealed', 'District planned'],
@@ -169,8 +169,8 @@ export const FUTURE_LANDMARKS: FutureLandmark[] = [
   },
 ]
 
-/** Decorative prop placements (texture, x, y). */
-export const DECOR: Array<{ key: string; x: number; y: number; depthBias?: number }> = [
+/** Prop placements authored against the original 960×720 plaza. */
+const DECOR_960: Array<{ key: string; x: number; y: number; depthBias?: number }> = [
   // perimeter trees
   { key: 'prop-tree', x: 100, y: 150 },
   { key: 'prop-tree', x: 860, y: 145 },
@@ -234,3 +234,17 @@ export const DECOR: Array<{ key: string; x: number; y: number; depthBias?: numbe
   { key: 'prop-bridge', x: 100, y: 300 },
   { key: 'prop-bridge', x: 860, y: 400 },
 ]
+
+/**
+ * ponytail: uniform 1.2× rescale of the original placements, not a fresh
+ * composition. C3 re-authors prop placement against the new layout with real
+ * art; this only keeps props on-screen and out of the canal until then.
+ */
+const DECOR_SCALE = 1.2
+const CANAL_INNER_RADIUS = 11 * 32
+
+export const DECOR = DECOR_960.map((p) => ({
+  ...p,
+  x: Math.round(p.x * DECOR_SCALE),
+  y: Math.round(p.y * DECOR_SCALE),
+})).filter((p) => Math.hypot(p.x - PLAZA_CENTER.x, p.y - PLAZA_CENTER.y) < CANAL_INNER_RADIUS)
