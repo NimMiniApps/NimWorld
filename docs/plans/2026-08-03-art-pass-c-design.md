@@ -197,7 +197,7 @@ Each phase gets its own implementation plan.
 | --- | --- | --- |
 | **C1** | Terrain foundation — new cell types, resolver predicate, rewritten layout, run-merged terrain collision, QA generalization, tests green. Renders in placeholder colors. — **done** | none |
 | **C2** | Water and path tilesets generated, chained, and wired in. — **done** (2 gens) | ~10 |
-| **C3** | Foliage, border wall, bridges, density pass. | ~20 |
+| **C3** | Foliage, border wall, density pass. Bridges dropped — no avenue crosses the canal. — **done** (14 gens) | ~20 |
 | **C4** | Landmark scale-up and in-world signboards. | ~15 |
 | **C5** | Mobile HUD trim — NIM balance chip, bottom nav. — **done** (extended with desktop-only preview shells; see `docs/plans/2026-08-04-plaza-hud-design.md`) | none |
 
@@ -260,6 +260,25 @@ beside the door.
 `PlazaScene` draws with: full sprite width in cells, from one row above the building's base
 to one row below it. Re-sizing a sprite re-sizes its pad. `plazaTerrainMap.test.ts` walks
 each sprite's own footprint and demands stone under it, so the two cannot drift apart again.
+
+## Correction: prop placement is derived, and no bridge was built
+
+C3 replaced the prop composition rather than re-authoring it. The old set was
+written for the 960×720 cross plaza and survived into the radial layout as a
+blanket 1.2× rescale, so props stood on paving and in the canal. `decorPlacement.ts`
+now scatters against the terrain grid from a fixed seed: a prop is placed only if
+its base cell is grass and it clears the landmarks, so re-tuning the hub or the
+canal re-scatters correctly instead of silently misplacing everything.
+
+Two things the scatter taught us. Canopy has to be placed before ground cover,
+because rejection sampling quietly favours whatever is smallest — mixed in one
+pass, ferns spent the attempt budget and barely a tree stood. And the treeline
+has to stop short of the bank, because when it and the border wall wanted the
+same band the wall won every contest and the treeline came out empty.
+
+The bridge in the batch table was never generated: the passability section above
+had already moved the canal outside the landmark band, so no avenue crosses the
+water and a bridge would span nothing.
 
 ## Relationship to the product roadmap
 
