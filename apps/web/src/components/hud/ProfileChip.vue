@@ -19,7 +19,7 @@ const store = usePlazaStore()
         {{ store.profile.handle ? `@${store.profile.handle}` : 'Guest' }}
       </p>
       <p class="source">
-        {{ store.profile.source === 'nimconnect' ? 'NimConnect profile' : 'Mock identity' }}
+        {{ store.profile.source === 'nimconnect' ? 'NimConnect' : 'Mock identity' }}
       </p>
     </div>
   </div>
@@ -29,15 +29,19 @@ const store = usePlazaStore()
 .chip {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.85rem;
-  min-width: 11rem;
+  gap: 0.7rem;
+  padding: 0.55rem 0.75rem;
+  min-width: 10.5rem;
+  border-color: rgba(88, 196, 255, 0.35);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(88, 196, 255, 0.08);
 }
 
 .avatar {
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 999px;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 10px;
   background: linear-gradient(145deg, var(--nw-gold), #ff8a3d);
   display: grid;
   place-items: center;
@@ -45,6 +49,8 @@ const store = usePlazaStore()
   font-weight: 800;
   color: #1a1204;
   overflow: hidden;
+  border: 1px solid rgba(245, 166, 35, 0.45);
+  flex-shrink: 0;
 }
 
 .avatar img {
@@ -55,13 +61,14 @@ const store = usePlazaStore()
 
 .name {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .source {
-  margin: 0.1rem 0 0;
-  font-size: 0.72rem;
+  margin: 0.12rem 0 0;
+  font-size: 0.68rem;
   color: var(--nw-muted);
 }
 </style>

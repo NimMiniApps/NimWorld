@@ -199,7 +199,7 @@ Each phase gets its own implementation plan.
 | **C2** | Water and path tilesets generated, chained, and wired in. — **done** (2 gens) | ~10 |
 | **C3** | Foliage, border wall, bridges, density pass. | ~20 |
 | **C4** | Landmark scale-up and in-world signboards. | ~15 |
-| **C5** | Mobile HUD trim — NIM balance chip, bottom nav. | none |
+| **C5** | Mobile HUD trim — NIM balance chip, bottom nav. — **done** (extended with desktop-only preview shells; see `docs/plans/2026-08-04-plaza-hud-design.md`) | none |
 
 C1 lands with tests green and zero credits spent, so the new ground plan can be reviewed in placeholder colors before any art is commissioned.
 

@@ -44,12 +44,11 @@ function sendTo(actor: { label: string; address?: string }) {
 
 <style scoped>
 .nearby {
-  position: absolute;
-  top: 4.75rem;
-  right: 0.75rem;
+  position: relative;
   z-index: 22;
-  width: min(16.5rem, calc(100vw - 1.5rem));
+  width: 100%;
   padding: 0.45rem;
+  border-color: rgba(88, 196, 255, 0.28);
 }
 
 .toggle {
