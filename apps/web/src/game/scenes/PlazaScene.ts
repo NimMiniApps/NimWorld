@@ -9,7 +9,6 @@ import {
   fountainOverrideIncludesCrystal,
 } from '@/game/assets/artManifest'
 import {
-  DECOR,
   FUTURE_LANDMARKS,
   LOCATIONS,
   PLAZA_CENTER,
@@ -18,6 +17,7 @@ import {
   WORLD,
   type PlazaLocation,
 } from '@/game/world/locations'
+import { DECOR } from '@/game/world/decorPlacement'
 import {
   PATH_TILESET_KEY,
   TERRAIN_TILESET_KEY,
@@ -42,6 +42,32 @@ export interface PlazaSceneData {
   spawn?: WorldPosition | null
   playerLabel?: string
 }
+
+/**
+ * Props the player cannot walk through, and the footprint each one blocks.
+ * Deliberately narrower than the sprite: the body sits at the base, so a canopy
+ * overhangs the player instead of stopping them a tree's width away.
+ */
+const SOLID_PROP_FOOTPRINTS: Record<string, { w: number; h: number }> = {
+  'prop-tree': { w: 18, h: 14 },
+  'prop-conifer': { w: 16, h: 14 },
+  'prop-broadleaf': { w: 20, h: 14 },
+  'prop-blossom': { w: 16, h: 14 },
+  'prop-boulder': { w: 32, h: 18 },
+  'prop-hedge': { w: 46, h: 20 },
+  'prop-wall': { w: 48, h: 24 },
+  'prop-wall-pillar': { w: 26, h: 24 },
+  'prop-fence': { w: 40, h: 14 },
+}
+
+/** Foliage that catches the evening breeze. */
+const SWAYING_PROPS = new Set([
+  'prop-tree',
+  'prop-conifer',
+  'prop-broadleaf',
+  'prop-blossom',
+  'prop-fern',
+])
 
 type AmbientActor = {
   id?: string
@@ -304,7 +330,7 @@ export class PlazaScene extends Phaser.Scene {
         })
       }
 
-      if (item.key === 'prop-tree') {
+      if (SWAYING_PROPS.has(item.key)) {
         this.trees.push(img)
         this.tweens.add({
           targets: img,
@@ -700,8 +726,20 @@ export class PlazaScene extends Phaser.Scene {
       this.physics.add.existing(body, true)
       walls.add(body)
     }
-    for (const item of DECOR.filter((d) => d.key === 'prop-tree' || d.key === 'prop-fence')) {
-      const body = this.add.rectangle(item.x, item.y - 8, item.key === 'prop-fence' ? 40 : 18, 14, 0x000000, 0)
+    // Solid props. The border wall is collidable here rather than as terrain:
+    // water stays the only blocking cell type, so a wall is just a prop you
+    // cannot walk through.
+    for (const item of DECOR) {
+      const footprint = SOLID_PROP_FOOTPRINTS[item.key]
+      if (!footprint) continue
+      const body = this.add.rectangle(
+        item.x,
+        item.y - 8,
+        footprint.w,
+        footprint.h,
+        0x000000,
+        0,
+      )
       this.physics.add.existing(body, true)
       walls.add(body)
     }

@@ -14,6 +14,17 @@ export const ART_OVERRIDES: Record<string, string | null> = {
   'prop-crates': 'props/crates_v01_final.png',
   'prop-bench': 'props/bench_v01_final.png',
   'prop-lantern': 'props/lantern_v01_final.png',
+  // C3 foliage kit — variety, so the plaza stops reading as one tree copied.
+  'prop-conifer': 'props/conifer_v02_final.png',
+  'prop-broadleaf': 'props/broadleaf_v02_final.png',
+  'prop-blossom': 'props/blossom_tree_v01_final.png',
+  'prop-shrub': 'props/shrub_v01_final.png',
+  'prop-fern': 'props/fern_v01_final.png',
+  'prop-boulder': 'props/boulder_v01_final.png',
+  'prop-flowerbed': 'props/flowerbed_v03_final.png',
+  'prop-hedge': 'props/hedge_v01_final.png',
+  'prop-wall': 'props/wall_straight_v01_final.png',
+  'prop-wall-pillar': 'props/wall_pillar_v01_final.png',
   // V4 character sheets (48×48 cells, 4 dirs × idle+3 walk)
   'char-player': 'characters/player_sheet_v01.png',
   'char-npc-a': 'characters/guide_sheet_v01.png',
@@ -36,6 +47,18 @@ export const ART_DISPLAY_SIZE: Partial<Record<string, { w: number; h: number }>>
   'prop-bench': { w: 44, h: 28 },
   'prop-lantern': { w: 20, h: 40 },
   'prop-crates': { w: 44, h: 32 },
+  // Canopy heights vary deliberately: a uniform skyline is what made the old
+  // single-tree scatter read as wallpaper.
+  'prop-conifer': { w: 44, h: 66 },
+  'prop-broadleaf': { w: 60, h: 52 },
+  'prop-blossom': { w: 44, h: 52 },
+  'prop-shrub': { w: 30, h: 30 },
+  'prop-fern': { w: 28, h: 28 },
+  'prop-boulder': { w: 38, h: 30 },
+  'prop-flowerbed': { w: 46, h: 30 },
+  'prop-hedge': { w: 48, h: 30 },
+  'prop-wall': { w: 48, h: 38 },
+  'prop-wall-pillar': { w: 28, h: 50 },
 }
 
 export function resolveArtOverride(key: string): string | null {

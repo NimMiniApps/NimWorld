@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { LOCATIONS, PLAZA_CENTER, SPAWN_POINT, VIEW_FRAME, WORLD, DECOR } from './locations'
+import { LOCATIONS, PLAZA_CENTER, SPAWN_POINT, VIEW_FRAME, WORLD } from './locations'
+import { DECOR } from './decorPlacement'
 import { TERRAIN_COLS, TERRAIN_ROWS, TERRAIN_TILE } from './terrainTypes'
 
 describe('world layout', () => {

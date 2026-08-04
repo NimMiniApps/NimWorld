@@ -242,8 +242,8 @@ const AVENUE_WIDTH = 2
  */
 const SOUTH_APPROACH_RUN = 160
 /** Canal ellipse, in cells from the center cell. Outside it is water. */
-const CANAL_RX = 16
-const CANAL_RY = 11.5
+export const CANAL_RX = 16
+export const CANAL_RY = 11.5
 
 /**
  * Circular hub with radial stone avenues to each landmark, enclosed by a canal.
