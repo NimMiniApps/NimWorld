@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @nimworld/web",
+    "dev:api": "cd apps/api && PORT=8091 COOKIE_INSECURE=1 go run .",
     "build": "npm run build -w @nimworld/app-manifest && npm run build -w @nimworld/web",
     "test": "npm run test -w @nimworld/app-manifest && npm run test -w @nimworld/web",
     "preview": "npm run preview -w @nimworld/web"

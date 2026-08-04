@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath, URL } from 'node:url'
 
+const authApiTarget = process.env.NIMWORLD_AUTH_API_TARGET?.trim() || 'http://localhost:8091'
+
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   resolve: {
@@ -20,7 +22,7 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/catalog-api/, ''),
       },
       '/auth-api': {
-        target: 'http://localhost:8081',
+        target: authApiTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/auth-api/, ''),
       },

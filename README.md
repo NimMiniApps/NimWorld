@@ -13,10 +13,17 @@ NimWorld is a visual lobby:
 
 ```bash
 npm install
+npm run dev:api
+```
+
+Then start the web app in a second terminal:
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:5173
+Open the local URL printed by Vite. The login API uses port `8091` by default;
+override its proxy target with `NIMWORLD_AUTH_API_TARGET` if needed.
 
 - Desktop: `WASD` / arrow keys to move, `Enter` / `Space` to interact, `Esc` to close overlays
 - Mobile: virtual joystick + tap the interaction prompt
