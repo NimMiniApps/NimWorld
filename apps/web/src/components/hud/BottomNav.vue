@@ -7,15 +7,7 @@ import {
   navIdsForLocation,
   type BottomNavId,
 } from './bottomNav'
-
-const ICONS: Record<BottomNavId, string> = {
-  home: '⌂',
-  apps: '▦',
-  inventory: '⧉',
-  achievements: '✦',
-  friends: '☺',
-  wallet: '◈',
-}
+import { HUD_ICON } from './hudPreviewData'
 
 const store = usePlazaStore()
 const activeIds = computed(() => new Set(navIdsForLocation(store.openLocationId)))
@@ -40,7 +32,7 @@ function onSelect(id: BottomNavId) {
       :class="{ active: activeIds.has(item.id) }"
       @click="onSelect(item.id)"
     >
-      <span class="icon" aria-hidden="true">{{ ICONS[item.id] }}</span>
+      <img class="icon" :src="HUD_ICON[item.id]" :alt="''" aria-hidden="true" />
       <span class="label">{{ item.label }}</span>
     </button>
   </nav>
@@ -92,8 +84,10 @@ function onSelect(id: BottomNavId) {
 }
 
 .icon {
-  font-size: 1rem;
-  line-height: 1;
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 .label {

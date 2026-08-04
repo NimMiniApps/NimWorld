@@ -7,9 +7,14 @@ export type PaymentResult =
 export interface NimiqPaymentAdapter {
   initialize(): Promise<void>
   isAvailable(): boolean
+  /** NIM balance when known; `null` if the host cannot expose one yet. */
+  getBalanceNim(): Promise<number | null>
   sendNim(recipient: string, amountLuna: number, message?: string): Promise<PaymentResult>
   requestNim(amountLuna: number, message?: string): Promise<PaymentResult>
 }
+
+/** Preview balance until Pay / Hub expose a read API we can wire here. */
+export const MOCK_NIM_BALANCE = 1250.45
 
 const HUB_URL = import.meta.env.VITE_NIMIQ_HUB_URL?.trim() || 'https://hub.nimiq.com'
 const SDK_TIMEOUT_DESKTOP_MS = 2_500
@@ -25,6 +30,10 @@ export class MockNimiqPaymentAdapter implements NimiqPaymentAdapter {
 
   isAvailable(): boolean {
     return this.ready
+  }
+
+  async getBalanceNim(): Promise<number | null> {
+    return MOCK_NIM_BALANCE
   }
 
   async sendNim(
@@ -91,6 +100,11 @@ export class MiniAppSdkPaymentAdapter implements NimiqPaymentAdapter {
 
   isAvailable(): boolean {
     return Boolean(this.nimiq) || this.fallback.isAvailable() || !isNimiqPayHost()
+  }
+
+  async getBalanceNim(): Promise<number | null> {
+    // Mini App SDK does not expose wallet balance yet — keep one seam for when it does.
+    return this.fallback.getBalanceNim()
   }
 
   async sendNim(recipient: string, amountLuna: number, message?: string): Promise<PaymentResult> {

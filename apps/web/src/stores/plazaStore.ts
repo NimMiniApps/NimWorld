@@ -33,6 +33,8 @@ export const usePlazaStore = defineStore('plaza', () => {
   const nearbyActors = ref<PlazaActor[]>([])
   const paymentSheet = ref<PaymentSheetState | null>(null)
   const paymentBusy = ref(false)
+  const balanceNim = ref<number | null>(null)
+  const balanceIsPreview = ref(true)
 
   let adapters: AppAdapters | null = null
 
@@ -61,6 +63,7 @@ export const usePlazaStore = defineStore('plaza', () => {
       profile.value = await adapters.nimconnect.getCurrentProfile()
       featuredApps.value = await adapters.catalog.getFeaturedApps()
       nearbyActors.value = await adapters.presence.getActors()
+      await refreshBalance()
       const games = await adapters.catalog.getApps()
       const fromCatalog = games.filter((a) =>
         ['nimbomber', 'playnimiq'].includes(a.slug) || a.category.toLowerCase().includes('game'),
@@ -214,6 +217,14 @@ export const usePlazaStore = defineStore('plaza', () => {
     }
   }
 
+  async function refreshBalance() {
+    if (!adapters) return
+    const next = await adapters.payment.getBalanceNim()
+    balanceNim.value = next
+    // Until a live wallet read exists, adapter returns the mock preview amount.
+    balanceIsPreview.value = true
+  }
+
   async function openNimConnectProfile(handle?: string) {
     if (!adapters) return
     await adapters.nimconnect.openProfile(handle)
@@ -246,6 +257,8 @@ export const usePlazaStore = defineStore('plaza', () => {
     nearbyActors,
     paymentSheet,
     paymentBusy,
+    balanceNim,
+    balanceIsPreview,
     setAdapters,
     bootstrap,
     setInteraction,
@@ -257,6 +270,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     openPaymentSheet,
     closePaymentSheet,
     submitPayment,
+    refreshBalance,
     openNimConnectProfile,
     loadFountainExtras,
   }

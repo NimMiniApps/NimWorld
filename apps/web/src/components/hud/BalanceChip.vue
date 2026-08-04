@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { PREVIEW_NIM_BALANCE } from './hudPreviewData'
+import { computed } from 'vue'
+import { usePlazaStore } from '@/stores/plazaStore'
+import { formatNim, HUD_ICON, PREVIEW_NIM_BALANCE } from './hudPreviewData'
+
+const store = usePlazaStore()
+const amount = computed(() => store.balanceNim ?? PREVIEW_NIM_BALANCE)
 </script>
 
 <template>
   <div class="balance-row">
-    <div class="nw-panel balance" title="Preview balance — not a live wallet read">
-      <span class="coin" aria-hidden="true">◆</span>
-      <span class="amount">{{ PREVIEW_NIM_BALANCE }} NIM</span>
-      <span class="nw-hud-badge">Preview</span>
+    <div
+      class="nw-panel balance"
+      :title="store.balanceIsPreview ? 'Preview balance — not a live wallet read' : 'NIM balance'"
+    >
+      <img class="coin" :src="HUD_ICON.coin" alt="" />
+      <span class="amount">{{ formatNim(amount) }} NIM</span>
+      <span v-if="store.balanceIsPreview" class="nw-hud-badge">Preview</span>
     </div>
     <button class="nw-icon-btn" type="button" disabled aria-label="Mail (coming soon)">✉</button>
     <button class="nw-icon-btn" type="button" disabled aria-label="Settings (coming soon)">⚙</button>
@@ -34,9 +42,10 @@ import { PREVIEW_NIM_BALANCE } from './hudPreviewData'
 }
 
 .coin {
-  color: var(--nw-gold);
-  font-size: 0.75rem;
-  text-shadow: 0 0 8px rgba(245, 166, 35, 0.55);
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+  image-rendering: pixelated;
 }
 
 .amount {

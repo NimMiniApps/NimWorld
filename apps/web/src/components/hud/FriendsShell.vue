@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import IdenticonAvatar from './IdenticonAvatar.vue'
 import { PREVIEW_FRIENDS } from './hudPreviewData'
 </script>
 
@@ -11,7 +12,7 @@ import { PREVIEW_FRIENDS } from './hudPreviewData'
 
     <ul class="list">
       <li v-for="friend in PREVIEW_FRIENDS" :key="friend.handle">
-        <div class="avatar" aria-hidden="true">{{ friend.handle.slice(1, 2).toUpperCase() }}</div>
+        <IdenticonAvatar :address="friend.address" :fallback="friend.handle" size="1.85rem" />
         <div class="meta">
           <p class="handle">{{ friend.handle }}</p>
           <p class="place">{{ friend.place }}</p>
@@ -65,18 +66,6 @@ import { PREVIEW_FRIENDS } from './hudPreviewData'
   padding: 0.35rem 0.3rem;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
-}
-
-.avatar {
-  width: 1.85rem;
-  height: 1.85rem;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: #1a1204;
-  background: linear-gradient(145deg, var(--nw-purple), #58c4ff);
 }
 
 .handle {

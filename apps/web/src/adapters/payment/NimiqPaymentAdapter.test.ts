@@ -108,4 +108,12 @@ describe('MiniAppSdkPaymentAdapter', () => {
     })
     expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^nimiq:\?amount=1/))
   })
+
+  it('exposes a preview NIM balance until a live wallet read exists', async () => {
+    initMock.mockRejectedValue(new Error('no pay host'))
+    const { MiniAppSdkPaymentAdapter, MOCK_NIM_BALANCE } = await import('./NimiqPaymentAdapter')
+    const adapter = new MiniAppSdkPaymentAdapter()
+    await adapter.initialize()
+    await expect(adapter.getBalanceNim()).resolves.toBe(MOCK_NIM_BALANCE)
+  })
 })
