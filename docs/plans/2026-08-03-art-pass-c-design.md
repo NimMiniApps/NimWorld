@@ -61,7 +61,7 @@ export type TerrainCell = 0 | 1 | 2 | 3 | 4 | 5
 ```
 
 - **Water** produces the canal ring that encloses the plaza and reads as depth.
-- **Path** produces warm tan spokes against the cool grey hub stone. This two-tone ground is the single largest contributor to the mockup's perceived density — a uniform stone floor cannot read the same way regardless of how many props sit on it.
+- **Path** produces warm tan spokes against the cool grey hub stone. This two-tone ground is the single largest contributor to the mockup's perceived density — a uniform stone floor cannot read the same way regardless of how many props sit on it. **Withdrawn after C2 — see "the two-tone ground plan is withdrawn" below.**
 
 `isStoneFamily` keeps its current members (plaza, entrance, construction). Path is deliberately *not* in the stone family: it is a separate Wang layer with its own tileset, and mixing it into the stone mask would make the hub and spokes indistinguishable.
 
@@ -123,7 +123,7 @@ O  = circular stone hub, fountain at center
 
 - **Hub** — `stampDisk` at `PLAZA_CENTER`, radius ~5 cells, `TERRAIN_PLAZA`.
 - **Spokes** — six `stampCurve` calls with `bulge: 0` (straight), `TERRAIN_PATH`, hub edge to landmark landing pad.
-- **Landing pads** — `stampLandingPad` per landmark, sizes carried over from the current map (Arcade 5×3, Arena 4×3, Marketplace 2×2 construction, Social Club 3×2, Town Hall 3×3).
+- **Landing pads** — `stampLandingPad` per landmark, sizes carried over from the current map (Arcade 5×3, Arena 4×3, Marketplace 2×2 construction, Social Club 3×2, Town Hall 3×3). **Superseded — see "landing pads are derived from the sprite" below.**
 - **Canal** — `stampRing` of `TERRAIN_WATER` outside the landmark band, with a gap or bridge at each spoke crossing.
 - **Border** — wall band at the world edge, backed by collision, dense foliage inside it.
 
@@ -218,9 +218,48 @@ The spokes shipped in C1 read as slabs rather than roads. Three causes, all in
    `HUB_RADIUS` away — the hub disk, stamped last, erased it entirely. It now runs past
    the spawn toward the Harbor.
 
-Cardinal avenues are 3 cells, diagonals 2: a diagonal band covers ~√2 more cells per row,
-so equal numbers make the diagonals read as wedges. A road renders one display tile wider
-than its cell count, since the Wang layer needs a transition tile on each side.
+A road renders one display tile wider than its cell count, since the Wang layer needs a
+transition tile on each side.
+
+## Correction: the two-tone ground plan is withdrawn
+
+The "warm tan spokes against the cool grey hub" above does not work, and no amount of
+palette tuning fixes it. Each terrain family is its own Wang layer, and every layer knows
+only one transition: to grass. Where the tan avenue met the stone hub, the stone layer
+painted its stone→grass edge tile on top of the road, leaving a grass channel and a second
+outline between them. Every avenue detached from the hub, and every landing pad detached
+from its avenue. Two paved materials cannot abut.
+
+Inlaying tan inside a shared stone silhouette — folding path into the stone mask and
+painting only the road's full-upper interior cells — was tested and rejected: a 3-cell road
+has almost no interior, so the tan broke into disconnected patches.
+
+The ground plan is therefore **one paved material**: hub, avenues and landing pads are all
+stone family, so the plaza is a single continuous silhouette with one outline against the
+grass. Density comes from C3 foliage and C4 landmarks instead.
+
+`path_warm_wang_v01` is not wasted. A grass↔path Wang set is exactly right for C3 garden
+trails through the foliage band, which only ever touch grass. The path layer stays wired in
+`PlazaScene` for that.
+
+Widths settled with the material: hub radius 6 — at 4 the six-way junction swallowed the
+disk and the plaza read as an asterisk — and avenues 2 cells, cardinal and diagonal alike.
+The earlier 3-cell cardinal / 2-cell diagonal split existed to stop diagonals reading as
+wedges; at 2 cells both, that problem does not arise. The south approach was lengthened to
+clear the wider hub.
+
+## Correction: landing pads are derived from the sprite, not authored
+
+The pad sizes listed above (Arcade 5×3, Arena 4×3, and so on) were carried over from the
+960×720 plaza, and the landmark art outgrew them. Every pad was narrower than the building
+standing on it — the Town Hall is 140px wide on a 96px pad — so each building hung off its
+own paving into the grass, and the pad's leftover half read as a stone platform parked
+beside the door.
+
+`landingPadRect` now derives the rect from `ART_DISPLAY_SIZE` and the sprite origin
+`PlazaScene` draws with: full sprite width in cells, from one row above the building's base
+to one row below it. Re-sizing a sprite re-sizes its pad. `plazaTerrainMap.test.ts` walks
+each sprite's own footprint and demands stone under it, so the two cannot drift apart again.
 
 ## Relationship to the product roadmap
 

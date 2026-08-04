@@ -12,9 +12,9 @@ export const TERRAIN_COLS = 36
 export const TERRAIN_ROWS = 27
 
 /**
- * Paved stone: the hub, landmark landings, and construction pads.
- * Path is deliberately excluded — it is a separate Wang layer with its own
- * tileset, and folding it in here would render hub and spokes identically.
+ * Paved stone: the hub, the avenues, landmark landings, and construction pads.
+ * Path is excluded because it is a separate Wang layer with its own tileset —
+ * see `buildPlazaTerrainGrid` for why the two never touch.
  */
 export function isStoneFamily(cell: number): boolean {
   return cell === TERRAIN_PLAZA || cell === TERRAIN_ENTRANCE || cell === TERRAIN_CONSTRUCTION

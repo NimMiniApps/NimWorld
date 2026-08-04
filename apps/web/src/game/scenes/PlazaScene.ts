@@ -260,6 +260,10 @@ export class PlazaScene extends Phaser.Scene {
     // Painter order: opaque grass base, then water, path, and stone above it.
     // The base is a separate layer because each overlay only reaches as far as
     // its own transition tiles; grass elsewhere has nothing else to paint it.
+    //
+    // The path layer is empty until C3 lays garden trails: the plaza ground plan
+    // is a single stone material, because two paved Wang layers cannot abut
+    // without a grass channel between them.
     makeWangLayer(TERRAIN_TILESET_KEY, () => false, 0, null)
     makeWangLayer(WATER_TILESET_KEY, (cell) => !isWater(cell), 0.1, ARRAY_FULL_UPPER)
     makeWangLayer(PATH_TILESET_KEY, isPath, 0.2, ARRAY_FULL_LOWER)

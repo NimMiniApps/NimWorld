@@ -1,10 +1,10 @@
-import { LOCATIONS, PLAZA_CENTER, SPAWN_POINT } from './locations'
+import { ART_DISPLAY_SIZE } from '../assets/artManifest'
+import { LOCATIONS, PLAZA_CENTER, SPAWN_POINT, type PlazaLocation } from './locations'
 import type { CellPredicate } from './terrainResolver'
 import {
   TERRAIN_COLS,
   TERRAIN_CONSTRUCTION,
   TERRAIN_ENTRANCE,
-  TERRAIN_PATH,
   TERRAIN_PLAZA,
   TERRAIN_ROWS,
   TERRAIN_TILE,
@@ -32,29 +32,55 @@ function stampDisk(
   }
 }
 
-/**
- * Stamp a rectangular pad in cell space, centered on (centerCol, centerRow).
- * `width`/`height` are inclusive cell counts (must be ≥ 1).
- */
-function stampLandingPad(
+/** Stamp an inclusive cell-space rectangle. */
+function stampRect(
   grid: TerrainCell[][],
-  centerCol: number,
-  centerRow: number,
-  width: number,
-  height: number,
+  col0: number,
+  row0: number,
+  col1: number,
+  row1: number,
   value: TerrainCell,
 ): void {
-  const halfW = Math.floor((width - 1) / 2)
-  const halfH = Math.floor((height - 1) / 2)
-  const col0 = centerCol - halfW
-  const row0 = centerRow - halfH
-  const col1 = col0 + width - 1
-  const row1 = row0 + height - 1
   for (let r = row0; r <= row1; r++) {
     for (let c = col0; c <= col1; c++) {
       if (r < 0 || c < 0 || r >= TERRAIN_ROWS || c >= TERRAIN_COLS) continue
       grid[r]![c] = value
     }
+  }
+}
+
+/** Vertical origin PlazaScene draws landmark sprites with. */
+const BUILDING_ORIGIN_Y = 0.82
+/** Forecourt depth in cells below a building's base. */
+const PAD_FORECOURT = 1
+
+/**
+ * The cells a landmark's landing pad must cover, derived from the sprite the
+ * scene will actually draw.
+ *
+ * These were hand-authored cell counts carried over from the 960×720 plaza, and
+ * the buildings outgrew them: every pad ended up narrower than the building
+ * standing on it, so each one hung off its own paving into the grass. Deriving
+ * the rect from `ART_DISPLAY_SIZE` means re-sizing a sprite re-sizes its pad.
+ *
+ * The pad reaches one row above the building's base as well as below it. That
+ * row is hidden behind the sprite, and it guarantees no grass shows at the
+ * building's feet when the footprint straddles a cell boundary.
+ */
+function landingPadRect(loc: PlazaLocation): {
+  col0: number
+  row0: number
+  col1: number
+  row1: number
+} {
+  const size = ART_DISPLAY_SIZE[loc.texture ?? ''] ?? { w: loc.collideW, h: loc.collideH }
+  const base = loc.y + (1 - BUILDING_ORIGIN_Y) * size.h
+  const baseRow = Math.round(base / TERRAIN_TILE)
+  return {
+    col0: Math.floor((loc.x - size.w / 2) / TERRAIN_TILE),
+    col1: Math.ceil((loc.x + size.w / 2) / TERRAIN_TILE) - 1,
+    row0: baseRow - 1,
+    row1: baseRow + PAD_FORECOURT,
   }
 }
 
@@ -199,25 +225,37 @@ export function floodReachable(
   return seen
 }
 
-/** Hub radius in cells. */
-const HUB_RADIUS = 4
-/** Cardinal avenue width in cells. Renders one display tile wider — see `stampRoad`. */
-const SPOKE_WIDTH = 3
+/** Hub radius in cells. Wide enough that the disk still reads as a circle once
+ * six avenues meet it — at radius 4 the junction swallowed the hub and the
+ * whole plaza read as an asterisk. */
+export const HUB_RADIUS = 6
 /**
- * Diagonal roads are stamped a cell narrower. A diagonal band covers roughly
- * √2 more cells per row than a cardinal one of the same width, so matching the
- * numbers would make the diagonals read as wedges rather than as roads.
+ * Avenue width in cells, cardinal and diagonal alike. Renders one display tile
+ * wider — see `stampRoad` — so 2 is already a three-tile road; wider reads as a
+ * courtyard rather than a street.
  */
-const DIAGONAL_WIDTH = 2
-/** How far the south approach runs past SPAWN_POINT, toward the Harbor tease. */
-const SOUTH_APPROACH_RUN = 96
+const AVENUE_WIDTH = 2
+/**
+ * How far the south approach runs past SPAWN_POINT, toward the Harbor tease.
+ * Long enough that it clears the wider hub and still reads as an avenue rather
+ * than a stub; it stops short of the canal at CANAL_RY.
+ */
+const SOUTH_APPROACH_RUN = 160
 /** Canal ellipse, in cells from the center cell. Outside it is water. */
 const CANAL_RX = 16
 const CANAL_RY = 11.5
 
 /**
- * Circular hub with radial path spokes to each landmark, enclosed by a canal.
+ * Circular hub with radial stone avenues to each landmark, enclosed by a canal.
  * Semantic cells for Wang dual-grid sampling (not autotile masks).
+ *
+ * Hub, avenues and landing pads are all one paved material on purpose. Each
+ * terrain family is its own Wang layer and every layer only knows how to
+ * transition to grass, so two paved materials cannot abut: the upper one paints
+ * its material→grass edge tile over the lower one, leaving a grass channel and
+ * a second outline between them. A tan avenue meeting the stone hub detached
+ * from it visibly. The warm path tileset is kept for C3 garden trails, which
+ * only ever touch grass — the case a grass↔path Wang set is built for.
  */
 export function buildPlazaTerrainGrid(): TerrainCell[][] {
   const grid = createEmptyTerrainGrid()
@@ -228,28 +266,23 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
   // guarantees no spoke or landing can be drowned by the ring.
   stampOutsideEllipse(grid, center.c, center.r, CANAL_RX, CANAL_RY, TERRAIN_WATER)
 
-  // Spokes: straight paths from hub edge to each landmark.
-  const spokes: Array<{
-    id: string
-    pad: { w: number; h: number }
-    kind: TerrainCell
-    width: number
-  }> = [
-    { id: 'arcade', pad: { w: 5, h: 3 }, kind: TERRAIN_ENTRANCE, width: SPOKE_WIDTH },
-    { id: 'arena', pad: { w: 4, h: 3 }, kind: TERRAIN_ENTRANCE, width: SPOKE_WIDTH },
-    { id: 'marketplace', pad: { w: 2, h: 2 }, kind: TERRAIN_CONSTRUCTION, width: SPOKE_WIDTH },
-    { id: 'social-club', pad: { w: 3, h: 2 }, kind: TERRAIN_ENTRANCE, width: DIAGONAL_WIDTH },
-    { id: 'town-hall', pad: { w: 3, h: 3 }, kind: TERRAIN_ENTRANCE, width: DIAGONAL_WIDTH },
+  // Avenues: straight runs from the hub edge to each landmark.
+  const spokes: Array<{ id: string; kind: TerrainCell }> = [
+    { id: 'arcade', kind: TERRAIN_ENTRANCE },
+    { id: 'arena', kind: TERRAIN_ENTRANCE },
+    { id: 'marketplace', kind: TERRAIN_CONSTRUCTION },
+    { id: 'social-club', kind: TERRAIN_ENTRANCE },
+    { id: 'town-hall', kind: TERRAIN_ENTRANCE },
   ]
 
-  for (const { id, pad, kind, width } of spokes) {
+  for (const { id, kind } of spokes) {
     const loc = LOCATIONS.find((l) => l.id === id)!
-    stampRoad(grid, PLAZA_CENTER.x, PLAZA_CENTER.y, loc.x, loc.y, width, TERRAIN_PATH)
-    const cell = toCell(loc.x, loc.y)
-    stampLandingPad(grid, cell.c, cell.r, pad.w, pad.h, kind)
+    stampRoad(grid, PLAZA_CENTER.x, PLAZA_CENTER.y, loc.x, loc.y, AVENUE_WIDTH, TERRAIN_PLAZA)
+    const { col0, row0, col1, row1 } = landingPadRect(loc)
+    stampRect(grid, col0, row0, col1, row1, kind)
   }
 
-  // Spawn approach — a sixth spoke running south from the hub. It runs well
+  // Spawn approach — a sixth avenue running south from the hub. It runs well
   // past SPAWN_POINT, which sits on the hub itself: a road that stopped there
   // would be swallowed whole by the hub disk.
   stampRoad(
@@ -258,11 +291,10 @@ export function buildPlazaTerrainGrid(): TerrainCell[][] {
     PLAZA_CENTER.y,
     SPAWN_POINT.x,
     SPAWN_POINT.y + SOUTH_APPROACH_RUN,
-    SPOKE_WIDTH,
-    TERRAIN_PATH,
+    AVENUE_WIDTH,
+    TERRAIN_PLAZA,
   )
 
-  // Hub last so it always reads as one clean disk over the spoke stubs.
   stampDisk(grid, center.c, center.r, HUB_RADIUS, TERRAIN_PLAZA)
 
   return grid
