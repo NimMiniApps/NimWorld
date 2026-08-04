@@ -42,15 +42,15 @@ const amount = computed(() => store.balanceNim ?? PREVIEW_NIM_BALANCE)
 }
 
 .coin {
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.35rem;
+  height: 1.35rem;
   object-fit: contain;
   image-rendering: pixelated;
 }
 
 .amount {
   font-family: var(--nw-font-pixel);
-  font-size: 0.52rem;
+  font-size: 0.62rem;
   letter-spacing: 0.02em;
   color: var(--nw-text);
   white-space: nowrap;

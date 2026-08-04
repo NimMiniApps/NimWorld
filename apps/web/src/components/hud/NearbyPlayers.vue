@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { isPayableActor } from '@/adapters/presence/PresenceAdapter'
 import { usePlazaStore } from '@/stores/plazaStore'
+import IdenticonAvatar from './IdenticonAvatar.vue'
 
 const store = usePlazaStore()
 const expanded = ref(false)
@@ -25,6 +26,7 @@ function sendTo(actor: { label: string; address?: string }) {
 
     <ul v-if="expanded">
       <li v-for="actor in store.nearbyActors" :key="actor.id">
+        <IdenticonAvatar :address="actor.address" :fallback="actor.label" size="1.9rem" />
         <div class="meta">
           <p class="label">{{ actor.label }}</p>
           <p class="status">{{ actor.statusLabel }}</p>
@@ -88,6 +90,11 @@ li {
   gap: 0.5rem;
   padding: 0.4rem 0.45rem;
   border-top: 1px solid var(--nw-panel-border);
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
 }
 
 .label {

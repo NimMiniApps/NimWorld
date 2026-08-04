@@ -32,7 +32,12 @@ watch(() => props.address, load)
 </script>
 
 <template>
-  <div class="identicon" :style="{ width: size, height: size }" aria-hidden="true">
+  <div
+    class="identicon"
+    :class="{ 'has-icon': src }"
+    :style="{ width: size, height: size }"
+    aria-hidden="true"
+  >
     <img v-if="src" :src="src" alt="" />
     <span v-else>{{ fallback.slice(0, 1).toUpperCase() }}</span>
   </div>
@@ -52,10 +57,16 @@ watch(() => props.address, load)
   flex-shrink: 0;
 }
 
+/* Identicon SVGs are transparent — the gold fallback gradient would tint them. */
+.identicon.has-icon {
+  background: radial-gradient(circle at 50% 40%, rgba(88, 196, 255, 0.18), rgba(8, 10, 24, 0.9));
+  border-color: rgba(88, 196, 255, 0.4);
+}
+
 .identicon img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 </style>

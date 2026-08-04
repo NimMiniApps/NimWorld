@@ -94,8 +94,58 @@ low top-down / low-isometric 3/4 to match the plaza north star.
 - Modify: `apps/web/src/game/scenes/PlazaScene.ts` (wall collision; sway tween for the new trees)
 
 - [x] Register the new keys and display sizes; `artManifest.test.ts` already validates the manifest.
-- [x] Wall segments follow the canal bank as a ring of props, with collision rects emitted the way `prop-tree` and `prop-fence` already are. No `TERRAIN_WALL` cell type — the design doc settled that water is the only blocking terrain.
+- [x] ~~Wall segments follow the canal bank as a ring of props~~ — **cut on review.** See Task 8.
 - [x] Give the new trees the existing sway tween so foliage motion stays consistent.
+
+## Task 8: Review pass — what the first build got wrong
+
+Four defects, all visible in the 1440×900 capture and none caught by the tests
+as they stood.
+
+- [x] **The border wall is cut.** The kit is one straight-on sprite, and a
+  straight-on sprite cannot follow a curved bank: it faces the camera whichever
+  way the shore runs, so the east and west banks read as stones dropped side-on
+  and the corners never turn. This was worth a real attempt first — the run was
+  originally sampled by angle, which on an ellipse bunches segments 31px apart
+  at the ends and leaves 380px holes along the flat sides, and re-stepping it by
+  arc length closed every seam. It still looked wrong, because the problem was
+  never the placement. Enclosing the plaza needs an oriented kit (four runs plus
+  inner and outer corners, chosen from the bank's local direction, the way the
+  terrain layers already pick Wang tiles). Assets moved to
+  `assets/art/rejected/border_wall_v01/`. The treeline carries the boundary
+  meanwhile, which it does without needing to know which way it is facing.
+- [x] **The procedural placeholders are gone.** Banners, fence, joystick, coffee
+  stand, statue, firepit and picnic table were all drawn in
+  `generatePlazaAtlas.ts` and never had art made for them. Beside the PixelLab
+  sprites they read as flat coloured blocks. This costs design principle #3 —
+  landmarks no longer have a micro-landmark saying what they are — but a bad
+  prop states it worse than no prop. Only `prop-crates` survives, at the Arena,
+  because it is the one with real art. Re-earning the others is an art task, not
+  a placement one.
+- [x] **Lanterns and benches moved to the paving.** Both were placed on grass:
+  the lantern loop deliberately stepped perpendicular *off* the road, so civic
+  lighting stood in whatever grass it found. Lighting reads as lighting when it
+  lines a street. Inverted to walk out to the last paving cell — the kerb.
+- [x] **Benches are placed against their fixed orientation.** The sprite is a
+  front view with the seat toward the camera, so it only reads with its back to
+  the north and cannot be set at an arbitrary bearing. They now sit on the
+  fountain's east and west kerbs facing south, and the placement requires paving
+  to continue south of the anchor so the seat does not overhang the kerb. Two
+  benches placed rather than scattered seating: the honest number for one
+  orientation is small.
+- [x] **The old `prop-tree` is retired.** Its pale mint canopy sits far outside
+  the `#002010`–`#104010` vegetation range the art bible specifies, and it read
+  as a sprite from another game wherever it landed. `oak_v01` replaces it in the
+  same silhouette, with `poplar_v01` and `willow_v01` added for silhouette
+  variety — a slim vertical and a drooping mass against the existing rounded and
+  conical ones.
+- [x] **Scatter is clumped.** Sampling each prop independently against a minimum
+  spacing produces blue noise: evenly spread, never touching, never grouped. The
+  regularity is what reads as the same few sprites pasted across the map, not
+  the sprite count. Thickets are seeded and members drawn around the seed,
+  biased toward the seed's texture. Thicket seeds take textures in turn rather
+  than at random, because random seeding starved whole textures — a band of six
+  thickets could easily miss one of its four trees.
 
 ## Task 5: Garden trails — deferred
 
@@ -113,8 +163,8 @@ underneath them. It is a terrain change, independent of everything above.
 
 ## Task 6: Verify
 
-- [x] `npm test` green (124 tests); `npx vue-tsc -b` clean.
-- [x] Manual at 1440×900: the border wall encloses the plaza, the outer band carries a treeline, and no prop stands on paving or in the water.
+- [x] `npm test` green (135 tests); `npx vue-tsc -b` clean.
+- [x] Manual at 1440×900: the outer band carries a treeline, foliage groups into thickets with clearings between, lighting and seating line the paving, and no plant stands on paving or in the water.
 - [ ] 360×800 not reviewed.
 - [ ] `docs/screenshots/` not refreshed — the HUD is being rewritten in parallel, and capturing now would bake someone else's in-progress work into these screenshots.
 

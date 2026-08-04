@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type Phaser from 'phaser'
 import { createAdapters, createPlazaPresenceAdapter } from '@/adapters/createAdapters'
 import { LocalPresenceAdapter } from '@/adapters/presence/PresenceAdapter'
@@ -49,9 +49,10 @@ onMounted(async () => {
         break
       case 'INTERACTION_CLEARED':
         store.setInteraction(null)
+        // Walking out of a landmark's zone dismisses its panel.
+        store.closeLocation()
         break
       case 'OPEN_LOCATION':
-        worldBridge.emitUi({ type: 'PAUSE_MOVEMENT' })
         void store.openLocation(event.locationId)
         break
       case 'PLAYER_MOVED':
@@ -134,13 +135,6 @@ onMounted(async () => {
   game.events.on('plaza-first-move', onFirst)
   offFirstMove = () => game?.events.off('plaza-first-move', onFirst)
 })
-
-watch(
-  () => store.openLocationId,
-  (id) => {
-    if (!id) worldBridge.emitUi({ type: 'RESUME_MOVEMENT' })
-  },
-)
 
 onBeforeUnmount(() => {
   offFirstMove?.()

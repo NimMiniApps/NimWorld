@@ -125,7 +125,7 @@ O  = circular stone hub, fountain at center
 - **Spokes** — six `stampCurve` calls with `bulge: 0` (straight), `TERRAIN_PATH`, hub edge to landmark landing pad.
 - **Landing pads** — `stampLandingPad` per landmark, sizes carried over from the current map (Arcade 5×3, Arena 4×3, Marketplace 2×2 construction, Social Club 3×2, Town Hall 3×3). **Superseded — see "landing pads are derived from the sprite" below.**
 - **Canal** — `stampRing` of `TERRAIN_WATER` outside the landmark band, with a gap or bridge at each spoke crossing.
-- **Border** — wall band at the world edge, backed by collision, dense foliage inside it.
+- **Border** — wall band at the world edge, backed by collision, dense foliage inside it. **Superseded — the wall was cut in C3 and the foliage carries the border alone; see the C3 plan's Task 8.**
 
 Landmarks are repositioned onto the compass. `locations.ts` coordinate changes break assertions in `locations.test.ts` and `plazaTerrainMap.test.ts`; updating those is part of the work.
 
@@ -197,7 +197,7 @@ Each phase gets its own implementation plan.
 | --- | --- | --- |
 | **C1** | Terrain foundation — new cell types, resolver predicate, rewritten layout, run-merged terrain collision, QA generalization, tests green. Renders in placeholder colors. — **done** | none |
 | **C2** | Water and path tilesets generated, chained, and wired in. — **done** (2 gens) | ~10 |
-| **C3** | Foliage, border wall, density pass. Bridges dropped — no avenue crosses the canal. — **done** (14 gens) | ~20 |
+| **C3** | Foliage and density pass. Bridges dropped — no avenue crosses the canal. Border wall attempted and cut on review; see the C3 plan's Task 8. — **done** (17 gens) | ~20 |
 | **C4** | Landmark scale-up and in-world signboards. | ~15 |
 | **C5** | Mobile HUD trim — NIM balance chip, bottom nav. — **done** (extended with desktop-only preview shells; see `docs/plans/2026-08-04-plaza-hud-design.md`) | none |
 
@@ -270,11 +270,14 @@ now scatters against the terrain grid from a fixed seed: a prop is placed only i
 its base cell is grass and it clears the landmarks, so re-tuning the hub or the
 canal re-scatters correctly instead of silently misplacing everything.
 
-Two things the scatter taught us. Canopy has to be placed before ground cover,
+Three things the scatter taught us. Canopy has to be placed before ground cover,
 because rejection sampling quietly favours whatever is smallest — mixed in one
-pass, ferns spent the attempt budget and barely a tree stood. And the treeline
-has to stop short of the bank, because when it and the border wall wanted the
-same band the wall won every contest and the treeline came out empty.
+pass, ferns spent the attempt budget and barely a tree stood. Thicket seeds have
+to take their textures in turn rather than at random, or whole textures starve.
+And a minimum-spacing scatter alone produces blue noise — props evenly spread and
+never grouped — which is precisely what reads as the same few sprites pasted
+across the map. The regularity is the tell, not the sprite count, so foliage is
+seeded as thickets with clearings between them.
 
 The bridge in the batch table was never generated: the passability section above
 had already moved the canal outside the landmark band, so no avenue crosses the

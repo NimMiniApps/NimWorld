@@ -26,7 +26,11 @@ export class CharacterSprite {
     // Foot-centered body scales with sheet cell size (32×48 procedural or 48×48 V4).
     this.sprite.setSize(Math.round(fw * 0.44), Math.round(fh * 0.25))
     this.sprite.setOffset(Math.round(fw * 0.28), Math.round(fh * 0.67))
-    if (ghost) this.sprite.setAlpha(0.62)
+    if (ghost) {
+      this.sprite.setAlpha(0.62)
+      // Gold wash so a recently-visited echo reads as a memory, not a twin.
+      this.sprite.setTint(0xffe0a0)
+    }
     this.playIdle()
   }
 
@@ -43,14 +47,10 @@ export class CharacterSprite {
     const speed = Math.hypot(vx, vy)
     if (speed > 8) {
       this.facing = facingFromVector(vx, vy, this.facing)
-      if (!this.moving) {
-        this.moving = true
-        this.playWalk()
-      } else {
-        // refresh facing anim if direction changed
-        const key = `${this.sheet}-walk-${this.facing}`
-        if (this.sprite.anims.currentAnim?.key !== key) this.playWalk()
-      }
+      this.moving = true
+      // Cheap to call every frame — anims.play ignores a replay of the same key,
+      // and this keeps the mirrored right-facing row in sync on every turn.
+      this.playWalk()
     } else {
       this.sprite.setVelocity(0, 0)
       if (this.moving) {
@@ -92,11 +92,21 @@ export class CharacterSprite {
     this.sprite.setDepth(base + this.sprite.y)
   }
 
+  /**
+   * PixelLab ships the `east` rotation drawn facing left, exactly like `west`,
+   * so every V4 sheet's right-hand row moonwalks. Mirror the left row instead —
+   * one fix covers every sheet, procedural ones included.
+   */
+  private animRow(): Facing {
+    this.sprite.setFlipX(this.facing === 'right')
+    return this.facing === 'right' ? 'left' : this.facing
+  }
+
   private playIdle() {
-    this.sprite.anims.play(`${this.sheet}-idle-${this.facing}`, true)
+    this.sprite.anims.play(`${this.sheet}-idle-${this.animRow()}`, true)
   }
 
   private playWalk() {
-    this.sprite.anims.play(`${this.sheet}-walk-${this.facing}`, true)
+    this.sprite.anims.play(`${this.sheet}-walk-${this.animRow()}`, true)
   }
 }

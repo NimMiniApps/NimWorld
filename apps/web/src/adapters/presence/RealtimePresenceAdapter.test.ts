@@ -21,7 +21,7 @@ class FakeSocket {
 
   close() {
     this.readyState = 3
-    this.onclose?.(new CloseEvent('close'))
+    this.onclose?.(new Event('close') as CloseEvent)
   }
 
   open() {
@@ -47,7 +47,7 @@ describe('RealtimePresenceAdapter', () => {
         constructor() {
           queueMicrotask(() => {
             ;(this as unknown as FakeSocket).onerror?.(new Event('error'))
-            ;(this as unknown as FakeSocket).onclose?.(new CloseEvent('close'))
+            ;(this as unknown as FakeSocket).onclose?.(new Event('close') as CloseEvent)
           })
         }
         send() {}

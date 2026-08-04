@@ -4,10 +4,7 @@ import type { UiCommand, WorldPosition } from '@/domain/types'
 import type { WorldBridge } from '@/game/bridge/WorldBridge'
 import { CharacterSprite } from '@/game/entities/CharacterSprite'
 import type { CharSheet } from '@/game/assets/generatePlazaAtlas'
-import {
-  ART_DISPLAY_SIZE,
-  fountainOverrideIncludesCrystal,
-} from '@/game/assets/artManifest'
+import { ART_DISPLAY_SIZE } from '@/game/assets/artManifest'
 import {
   FUTURE_LANDMARKS,
   LOCATIONS,
@@ -49,23 +46,24 @@ export interface PlazaSceneData {
  * overhangs the player instead of stopping them a tree's width away.
  */
 const SOLID_PROP_FOOTPRINTS: Record<string, { w: number; h: number }> = {
-  'prop-tree': { w: 18, h: 14 },
   'prop-conifer': { w: 16, h: 14 },
   'prop-broadleaf': { w: 20, h: 14 },
   'prop-blossom': { w: 16, h: 14 },
+  'prop-oak': { w: 18, h: 14 },
+  'prop-poplar': { w: 14, h: 12 },
+  'prop-willow': { w: 18, h: 14 },
   'prop-boulder': { w: 32, h: 18 },
   'prop-hedge': { w: 46, h: 20 },
-  'prop-wall': { w: 48, h: 24 },
-  'prop-wall-pillar': { w: 26, h: 24 },
-  'prop-fence': { w: 40, h: 14 },
 }
 
 /** Foliage that catches the evening breeze. */
 const SWAYING_PROPS = new Set([
-  'prop-tree',
   'prop-conifer',
   'prop-broadleaf',
   'prop-blossom',
+  'prop-oak',
+  'prop-poplar',
+  'prop-willow',
   'prop-fern',
 ])
 
@@ -79,9 +77,12 @@ type AmbientActor = {
   phase: number
   displayName: string
   waypoints?: WorldPosition[]
+  waypointIndex: number
   glanceUntil: number
-  /** Live peer target; online actors lerp toward this each frame. */
+  /** Online: live peer position. Ambient: current stroll destination. */
   target?: WorldPosition
+  /** Ambient actors stand still until this timestamp. */
+  pauseUntil: number
 }
 
 export class PlazaScene extends Phaser.Scene {
@@ -100,12 +101,10 @@ export class PlazaScene extends Phaser.Scene {
   private activeLocationId: string | null = null
   private ambientActors: AmbientActor[] = []
   private depthSprites: Phaser.GameObjects.Image[] = []
-  private crystal: Phaser.GameObjects.Image | null = null
   private unsubUi: (() => boolean) | null = null
   private readonly speed = 155
   private hasMoved = false
   private terrainGrid: TerrainCell[][] = []
-  private flags: Phaser.GameObjects.Image[] = []
   private trees: Phaser.GameObjects.Image[] = []
 
   constructor() {
@@ -318,18 +317,6 @@ export class PlazaScene extends Phaser.Scene {
       img.setDepth(100 + item.y + (item.depthBias ?? 0))
       this.depthSprites.push(img)
 
-      if (item.key.startsWith('prop-banner')) {
-        this.flags.push(img)
-        this.tweens.add({
-          targets: img,
-          scaleX: 0.88,
-          duration: 700 + (item.x % 200),
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut',
-        })
-      }
-
       if (SWAYING_PROPS.has(item.key)) {
         this.trees.push(img)
         this.tweens.add({
@@ -357,17 +344,6 @@ export class PlazaScene extends Phaser.Scene {
         })
       }
 
-      if (item.key === 'prop-firepit') {
-        const fire = this.add.circle(item.x, item.y - 14, 12, 0xff8a3d, 0.2).setDepth(5)
-        this.tweens.add({
-          targets: fire,
-          alpha: 0.35,
-          scale: 1.15,
-          duration: 500,
-          yoyo: true,
-          repeat: -1,
-        })
-      }
     }
   }
 
@@ -504,7 +480,6 @@ export class PlazaScene extends Phaser.Scene {
 
   private placeFountain() {
     const { x, y } = PLAZA_CENTER
-    const combined = fountainOverrideIncludesCrystal()
     const base = this.add.image(x, y + 10, 'fountain-base')
     base.setOrigin(0.5, 0.75)
     const fountainSize = ART_DISPLAY_SIZE['fountain-base']
@@ -523,20 +498,6 @@ export class PlazaScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1,
     })
-
-    if (!combined) {
-      this.crystal = this.add.image(x, y - 22, 'fountain-crystal')
-      this.crystal.setDepth(100 + y + 2)
-      this.tweens.add({
-        targets: this.crystal,
-        y: y - 30,
-        angle: 8,
-        duration: 1600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      })
-    }
 
     // Sparse particles — alive, not busy
     for (let i = 0; i < 6; i++) {
@@ -645,7 +606,9 @@ export class PlazaScene extends Phaser.Scene {
       phase: Math.random() * Math.PI * 2,
       displayName: actor.label,
       waypoints: actor.waypoints,
+      waypointIndex: 0,
       glanceUntil: 0,
+      pauseUntil: 0,
     })
   }
 
@@ -694,7 +657,9 @@ export class PlazaScene extends Phaser.Scene {
       target: { ...actor.position },
       phase: 0,
       displayName: actor.label,
+      waypointIndex: 0,
       glanceUntil: 0,
+      pauseUntil: 0,
     })
   }
 
@@ -936,12 +901,11 @@ export class PlazaScene extends Phaser.Scene {
         continue
       }
 
-      // Glance at player when nearby
+      // Glance at player when nearby. The cooldown matters: re-arming every
+      // frame froze NPCs facing you for as long as you stood there.
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, prevX, prevY)
-      if (dist < 80 && actor.kind === 'npc') {
-        if (now > actor.glanceUntil) {
-          actor.glanceUntil = now + 1200
-        }
+      if (dist < 80 && actor.kind === 'npc' && now > actor.glanceUntil + 5000) {
+        actor.glanceUntil = now + 1400
       }
 
       if (now < actor.glanceUntil && actor.kind === 'npc') {
@@ -950,30 +914,55 @@ export class PlazaScene extends Phaser.Scene {
         continue
       }
 
-      if (actor.waypoints && actor.waypoints.length > 1) {
-        // Courier-style path between landmarks
-        const seg = actor.waypoints.length
-        const speed = 0.12
-        const total = t * speed + actor.phase
-        const idx = Math.floor(total) % seg
-        const next = (idx + 1) % seg
-        const localT = total - Math.floor(total)
-        const a = actor.waypoints[idx]!
-        const b = actor.waypoints[next]!
-        const x = a.x + (b.x - a.x) * localT
-        const y = a.y + (b.y - a.y) * localT
-        actor.character.ambientStep(x, y, prevX, prevY)
+      if (now < actor.pauseUntil) {
+        actor.character.ambientStep(prevX, prevY, prevX, prevY)
+        actor.character.updateDepth(100)
+        continue
+      }
+
+      // Integrated stroll toward a destination. The old version sampled a
+      // position straight off the clock, which both crept too slowly to read
+      // as walking and teleported the actor forward after every glance pause.
+      const target = (actor.target ??= this.nextAmbientTarget(actor))
+      const speed = actor.waypoints ? 62 : actor.kind === 'ghost' ? 30 : 52
+      const step = speed * (deltaMs / 1000)
+      const tx = target.x - prevX
+      const ty = target.y - prevY
+      const remaining = Math.hypot(tx, ty)
+      if (remaining <= step) {
+        actor.character.ambientStep(target.x, target.y, prevX, prevY)
+        actor.target = undefined
+        actor.pauseUntil = now + (actor.waypoints ? 600 : 900 + Math.random() * 2400)
       } else {
-        const radius = actor.kind === 'npc' ? 18 : 12
-        const x = actor.home.x + Math.cos(t * 0.45 + actor.phase) * radius
-        const y = actor.home.y + Math.sin(t * 0.35 + actor.phase) * (radius * 0.5)
-        actor.character.ambientStep(x, y, prevX, prevY)
+        actor.character.ambientStep(
+          prevX + (tx / remaining) * step,
+          prevY + (ty / remaining) * step,
+          prevX,
+          prevY,
+        )
       }
 
       actor.character.updateDepth(100)
       if (actor.kind === 'ghost') {
         actor.character.sprite.setAlpha(0.45 + 0.2 * Math.sin(t * 2 + actor.phase))
       }
+    }
+  }
+
+  /** Next stroll destination: the following waypoint, or a spot near home. */
+  private nextAmbientTarget(actor: AmbientActor): WorldPosition {
+    if (actor.waypoints && actor.waypoints.length > 1) {
+      actor.waypointIndex = (actor.waypointIndex + 1) % actor.waypoints.length
+      return { ...actor.waypoints[actor.waypointIndex]! }
+    }
+    // ponytail: no pathfinding — ambient bodies have physics disabled and the
+    // radius is small enough to stay off the props. Add a walkability check
+    // here if NPCs start strolling through hedges.
+    const radius = (actor.kind === 'npc' ? 36 : 24) * (0.5 + Math.random() * 0.5)
+    const angle = Math.random() * Math.PI * 2
+    return {
+      x: actor.home.x + Math.cos(angle) * radius,
+      y: actor.home.y + Math.sin(angle) * radius * 0.6,
     }
   }
 

@@ -49,10 +49,12 @@ const xpPct = computed(() => Math.min(100, (stats.xp / stats.xpMax) * 100))
 <style scoped>
 .chip {
   display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
-  padding: 0.55rem 0.75rem 0.6rem;
-  min-width: 14rem;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.7rem;
+  width: 100%;
+  min-width: 13rem;
+  max-width: 20rem;
   border-color: rgba(88, 196, 255, 0.35);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.35),
@@ -86,8 +88,8 @@ const xpPct = computed(() => Math.min(100, (stats.xp / stats.xpMax) * 100))
 
 .xp {
   position: relative;
-  margin-top: 0.4rem;
-  height: 1.05rem;
+  margin-top: 0.3rem;
+  height: 0.9rem;
   border-radius: 999px;
   background: rgba(8, 10, 24, 0.75);
   border: 1px solid rgba(155, 123, 255, 0.35);
@@ -116,8 +118,8 @@ const xpPct = computed(() => Math.min(100, (stats.xp / stats.xpMax) * 100))
 .stat-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  margin-top: 0.4rem;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
   flex-wrap: wrap;
 }
 

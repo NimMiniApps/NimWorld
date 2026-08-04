@@ -1,7 +1,13 @@
 import { ART_DISPLAY_SIZE } from '../assets/artManifest'
 import { FUTURE_LANDMARKS, LOCATIONS, PLAZA_CENTER, SPAWN_POINT, WORLD } from './locations'
 import { CANAL_RX, CANAL_RY, buildPlazaTerrainGrid } from './plazaTerrainMap'
-import { TERRAIN_GRASS, TERRAIN_TILE, type TerrainCell } from './terrainTypes'
+import {
+  TERRAIN_GRASS,
+  TERRAIN_PATH,
+  TERRAIN_PLAZA,
+  TERRAIN_TILE,
+  type TerrainCell,
+} from './terrainTypes'
 
 export interface DecorItem {
   key: string
@@ -55,9 +61,15 @@ function cellAt(grid: TerrainCell[][], x: number, y: number): TerrainCell | null
   return grid[r][c]
 }
 
-/** Props stand on grass only — never on paving, never in the water. */
+/** Foliage stands on grass only — never on paving, never in the water. */
 function standsOnGrass(grid: TerrainCell[][], x: number, y: number): boolean {
   return cellAt(grid, x, y) === TERRAIN_GRASS
+}
+
+/** Street furniture stands on the paving: lighting and seating belong to the road. */
+function standsOnPaving(grid: TerrainCell[][], x: number, y: number): boolean {
+  const cell = cellAt(grid, x, y)
+  return cell === TERRAIN_PLAZA || cell === TERRAIN_PATH
 }
 
 function clearsLandmarks(x: number, y: number, margin: number): boolean {
@@ -86,6 +98,10 @@ interface ScatterBand {
   /** Weighted key table; repeated keys are more likely. */
   keys: string[]
   count: number
+  /** Props per thicket, inclusive range. See `scatterBand`. */
+  clump: [number, number]
+  /** How far a thicket's members sit from its seed, in pixels. */
+  spread: number
 }
 
 /**
@@ -109,20 +125,26 @@ const BANDS: ScatterBand[] = [
   {
     from: 0.66,
     to: 0.82,
-    keys: ['prop-broadleaf', 'prop-blossom', 'prop-tree'],
-    count: 14,
+    keys: ['prop-broadleaf', 'prop-oak', 'prop-blossom', 'prop-willow'],
+    count: 16,
+    clump: [1, 2],
+    spread: 62,
   },
   {
     from: 0.82,
     to: 0.93,
-    keys: ['prop-conifer', 'prop-conifer', 'prop-broadleaf', 'prop-tree', 'prop-blossom'],
-    count: 28,
+    keys: ['prop-conifer', 'prop-conifer', 'prop-poplar', 'prop-oak', 'prop-broadleaf'],
+    count: 30,
+    clump: [2, 4],
+    spread: 58,
   },
   {
     from: 0.42,
     to: 0.66,
     keys: ['prop-shrub', 'prop-bush', 'prop-fern', 'prop-flowerbed', 'prop-boulder'],
-    count: 20,
+    count: 22,
+    clump: [1, 3],
+    spread: 40,
   },
   {
     from: 0.66,
@@ -135,29 +157,36 @@ const BANDS: ScatterBand[] = [
       'prop-hedge',
       'prop-boulder',
     ],
-    count: 24,
+    count: 26,
+    clump: [2, 4],
+    spread: 42,
   },
   {
     from: 0.82,
     to: 0.93,
     keys: ['prop-fern', 'prop-shrub', 'prop-hedge', 'prop-boulder'],
-    count: 16,
+    count: 18,
+    clump: [2, 4],
+    spread: 40,
   },
 ]
 
 /** Minimum gap between prop centers, by key. Canopies need the most room. */
 const SPACING: Record<string, number> = {
-  'prop-tree': 44,
   'prop-conifer': 40,
   'prop-broadleaf': 44,
   'prop-blossom': 42,
+  'prop-oak': 44,
+  'prop-poplar': 30,
+  'prop-willow': 46,
   'prop-bush': 28,
   'prop-shrub': 26,
   'prop-fern': 24,
   'prop-flowerbed': 34,
   'prop-boulder': 32,
-  'prop-hedge': 40,
-  'prop-wall': 30,
+  // Under the sprite width, so a clump of hedges closes into one run instead of
+  // standing as separate blocks — a lone hedge does not read as a hedge.
+  'prop-hedge': 34,
   'prop-crates': 40,
   'prop-lantern': 24,
   'prop-bench': 36,
@@ -175,7 +204,22 @@ function tooClose(placed: DecorItem[], key: string, x: number, y: number): boole
   return false
 }
 
-/** Rejection-sample one band, bounded so it always terminates. */
+function canStand(grid: TerrainCell[][], x: number, y: number): boolean {
+  if (x < 16 || y < 16 || x > WORLD.width - 16 || y > WORLD.height - 16) return false
+  return standsOnGrass(grid, x, y) && clearsLandmarks(x, y, 12)
+}
+
+/**
+ * Rejection-sample one band into thickets, bounded so it always terminates.
+ *
+ * Sampling each prop independently against a minimum spacing produces blue
+ * noise — props evenly spread, never touching, never grouped. That is what made
+ * the first pass read as the same few sprites pasted across the map: the
+ * regularity is the tell, not the sprite count. Vegetation grows in clumps with
+ * clearings between, so a seed is drawn per thicket and its members are drawn
+ * around it, biased toward the seed's own texture so a thicket reads as one
+ * stand of trees rather than an assortment.
+ */
 function scatterBand(
   grid: TerrainCell[][],
   band: ScatterBand,
@@ -184,27 +228,50 @@ function scatterBand(
 ): void {
   const maxAttempts = band.count * 60
   let taken = 0
+  let seed = 0
   for (let attempt = 0; attempt < maxAttempts && taken < band.count; attempt++) {
     const angle = rand() * Math.PI * 2
     const t = band.from + rand() * (band.to - band.from)
-    const x = Math.round(PLAZA_CENTER.x + Math.cos(angle) * t * CANAL_RX * TERRAIN_TILE)
-    const y = Math.round(PLAZA_CENTER.y + Math.sin(angle) * t * CANAL_RY * TERRAIN_TILE)
-    if (x < 16 || y < 16 || x > WORLD.width - 16 || y > WORLD.height - 16) continue
-    if (!standsOnGrass(grid, x, y)) continue
-    if (!clearsLandmarks(x, y, 12)) continue
+    const sx = Math.round(PLAZA_CENTER.x + Math.cos(angle) * t * CANAL_RX * TERRAIN_TILE)
+    const sy = Math.round(PLAZA_CENTER.y + Math.sin(angle) * t * CANAL_RY * TERRAIN_TILE)
+    if (!canStand(grid, sx, sy)) continue
 
-    const key = band.keys[Math.floor(rand() * band.keys.length)]
-    if (tooClose(placed, key, x, y)) continue
-    placed.push({ key, x, y })
+    // Thickets take textures in turn rather than at random. Drawing the seed
+    // randomly starved whole textures — a band of six thickets could easily miss
+    // one of its four trees entirely — and variety is the whole point here. The
+    // table stays weighted, so a repeated key still seeds proportionally more.
+    const primary = band.keys[seed % band.keys.length]
+    if (tooClose(placed, primary, sx, sy)) continue
+    seed++
+    placed.push({ key: primary, x: sx, y: sy })
     taken++
+
+    const [lo, hi] = band.clump
+    const members = lo + Math.floor(rand() * (hi - lo + 1))
+    for (let m = 0; m < members && taken < band.count; m++) {
+      const key = rand() < 0.6 ? primary : band.keys[Math.floor(rand() * band.keys.length)]
+      for (let retry = 0; retry < 10; retry++) {
+        const a = rand() * Math.PI * 2
+        const r = band.spread * (0.45 + 0.55 * rand())
+        const x = Math.round(sx + Math.cos(a) * r)
+        const y = Math.round(sy + Math.sin(a) * r)
+        if (!canStand(grid, x, y)) continue
+        if (tooClose(placed, key, x, y)) continue
+        placed.push({ key, x, y })
+        taken++
+        break
+      }
+    }
   }
 }
 
 /**
- * Compositional props, anchored to the geometry they belong to rather than to
- * absolute pixels. These are deliberately not scattered: a lantern reads as
- * civic lighting only if it lines an avenue, and a banner only means something
- * beside its own landmark.
+ * Street furniture, anchored to the road it belongs to rather than scattered.
+ *
+ * Only props with real art appear here. The banners, fence, joystick, coffee
+ * stand, statue, firepit and picnic table were all procedural placeholders from
+ * the pre-art-pass scene, and next to the PixelLab sprites they read as flat
+ * coloured blocks. They are better absent than standing in as landmark dressing.
  */
 function placeAnchored(grid: TerrainCell[][], placed: DecorItem[]): void {
   const bearings = LOCATIONS.filter((l) => l.id !== 'fountain').map((l) =>
@@ -213,141 +280,92 @@ function placeAnchored(grid: TerrainCell[][], placed: DecorItem[]): void {
   // The south approach carries no landmark but is the player's first avenue.
   bearings.push(Math.PI / 2)
 
-  // Lantern pairs flanking each avenue, at two distances out from the hub.
+  // Lanterns line the avenues from the kerb: on the paving, at its outer edge.
+  // They previously stepped perpendicular until they left the road, which put
+  // civic lighting out on whatever grass happened to be there.
   for (const angle of bearings) {
-    for (const t of [0.52, 0.74]) {
+    for (const t of [0.45, 0.62, 0.79]) {
       for (const side of [-1, 1]) {
         const px = Math.cos(angle) * t * CANAL_RX * TERRAIN_TILE
         const py = Math.sin(angle) * t * CANAL_RY * TERRAIN_TILE
         const len = Math.hypot(px, py) || 1
-        // Step perpendicular until off the paving, so the lantern lines the
-        // avenue from the grass instead of standing in the road.
-        for (let offset = 44; offset <= 84; offset += 8) {
+        let kerb: { x: number; y: number } | null = null
+        for (let offset = 0; offset <= 96; offset += 6) {
           const x = Math.round(PLAZA_CENTER.x + px + (-py / len) * offset * side)
           const y = Math.round(PLAZA_CENTER.y + py + (px / len) * offset * side)
-          if (!standsOnGrass(grid, x, y)) continue
-          if (!clearsLandmarks(x, y, 10)) continue
-          if (tooClose(placed, 'prop-lantern', x, y)) continue
-          placed.push({ key: 'prop-lantern', x, y })
-          break
+          if (!standsOnPaving(grid, x, y)) break
+          kerb = { x, y }
         }
+        if (!kerb) continue
+        if (!clearsLandmarks(kerb.x, kerb.y, 10)) continue
+        if (tooClose(placed, 'prop-lantern', kerb.x, kerb.y)) continue
+        placed.push({ key: 'prop-lantern', ...kerb })
       }
     }
   }
 
-  // A banner beside each landmark, on whichever flank has grass.
-  const banners: Record<string, string> = {
-    arcade: 'prop-banner-cyan',
-    arena: 'prop-banner-red',
-    'social-club': 'prop-banner-purple',
-    'town-hall': 'prop-banner-cyan',
-    marketplace: 'prop-banner-green',
-  }
-  for (const loc of LOCATIONS) {
-    const key = banners[loc.id]
-    if (!key) continue
-    const size = ART_DISPLAY_SIZE[loc.texture ?? ''] ?? { w: loc.collideW, h: loc.collideH }
-    for (const side of [-1, 1]) {
-      const x = Math.round(loc.x + side * (size.w / 2 + 22))
-      const y = Math.round(loc.y + 6)
-      if (!standsOnGrass(grid, x, y)) continue
-      if (tooClose(placed, key, x, y)) continue
-      placed.push({ key, x, y })
-      break
-    }
-  }
-
-  // Seating and micro-landmarks at the fountain's own grass margin.
-  const micro: Array<{ key: string; angle: number }> = [
-    { key: 'prop-bench', angle: -Math.PI / 4 },
-    { key: 'prop-bench', angle: (-3 * Math.PI) / 4 },
-    { key: 'prop-picnic', angle: (3 * Math.PI) / 4 },
-    { key: 'prop-firepit', angle: Math.PI / 4 },
-  ]
-  for (const { key, angle } of micro) {
-    for (let t = 0.34; t <= 0.6; t += 0.03) {
-      const x = Math.round(PLAZA_CENTER.x + Math.cos(angle) * t * CANAL_RX * TERRAIN_TILE)
-      const y = Math.round(PLAZA_CENTER.y + Math.sin(angle) * t * CANAL_RY * TERRAIN_TILE)
-      if (!standsOnGrass(grid, x, y)) continue
+  // The bench sprite is a fixed front view: seat toward the camera, back behind.
+  // It only reads with its back to the north, so it cannot be placed at an
+  // arbitrary bearing — it is set along the fountain's east and west kerbs,
+  // where facing south is also facing the square.
+  for (const side of [-1, 1]) {
+    for (let out = 96; out <= 190; out += 8) {
+      const x = Math.round(PLAZA_CENTER.x + side * out)
+      const y = Math.round(PLAZA_CENTER.y + 40)
+      // The seat overhangs forward of the anchor, so the paving has to continue
+      // south of it or the bench sits half off the kerb.
+      if (!standsOnPaving(grid, x, y) || !standsOnPaving(grid, x, y + 20)) continue
       if (!clearsLandmarks(x, y, 10)) continue
-      if (tooClose(placed, key, x, y)) continue
-      placed.push({ key, x, y })
+      if (tooClose(placed, 'prop-bench', x, y)) continue
+      placed.push({ key: 'prop-bench', x, y })
       break
     }
   }
 
-  // Micro-landmarks that say something about the building they stand beside
-  // (design principle #3). Placed outward of the landmark so they read as its
-  // forecourt rather than as scenery that happens to be nearby.
-  const themed: Array<{ locId: string; key: string }> = [
-    { locId: 'arcade', key: 'prop-joystick' },
-    { locId: 'social-club', key: 'prop-coffee' },
-    { locId: 'town-hall', key: 'prop-statue' },
-    { locId: 'marketplace', key: 'prop-fence' },
-    { locId: 'arena', key: 'prop-crates' },
-  ]
-  for (const { locId, key } of themed) {
-    const loc = LOCATIONS.find((l) => l.id === locId)
-    if (!loc) continue
-    const size = ART_DISPLAY_SIZE[loc.texture ?? ''] ?? { w: loc.collideW, h: loc.collideH }
-    // Start clear of the building's own footprint. The Arcade is 190px wide, so
-    // any smaller offset lands inside it and is rejected outright.
+  // Crates outside the Arena: the one landmark prop with real art, so the only
+  // themed micro-landmark that survives the placeholder cull.
+  const arena = LOCATIONS.find((l) => l.id === 'arena')
+  if (arena) {
+    const size = ART_DISPLAY_SIZE[arena.texture ?? ''] ?? {
+      w: arena.collideW,
+      h: arena.collideH,
+    }
     const start = Math.max(size.w, size.h) / 2 + 20
-    const angle = Math.atan2(loc.y - PLAZA_CENTER.y, loc.x - PLAZA_CENTER.x)
+    const angle = Math.atan2(arena.y - PLAZA_CENTER.y, arena.x - PLAZA_CENTER.x)
     let done = false
     for (const side of [1, -1]) {
       if (done) break
       for (let out = start; out <= start + 72 && !done; out += 8) {
-        const x = Math.round(loc.x + Math.cos(angle + (side * Math.PI) / 2) * out)
-        const y = Math.round(loc.y + Math.sin(angle + (side * Math.PI) / 2) * out)
+        const x = Math.round(arena.x + Math.cos(angle + (side * Math.PI) / 2) * out)
+        const y = Math.round(arena.y + Math.sin(angle + (side * Math.PI) / 2) * out)
         if (!standsOnGrass(grid, x, y)) continue
         if (!clearsLandmarks(x, y, 8)) continue
-        if (tooClose(placed, key, x, y)) continue
-        placed.push({ key, x, y })
+        if (tooClose(placed, 'prop-crates', x, y)) continue
+        placed.push({ key: 'prop-crates', x, y })
         done = true
       }
     }
   }
 }
 
-/**
- * A low wall following the canal bank, so the plaza reads as deliberately
- * enclosed rather than as ground that happens to stop.
- *
- * There is no `TERRAIN_WALL` cell type by design — water is the only blocking
- * terrain, and the wall blocks through prop collision the way trees already do.
- * Every eighth segment is a lantern pillar, which breaks up what would
- * otherwise be the most repetitive run in the world.
+/*
+ * There is deliberately no border wall. A run of masonry was tried along the
+ * canal bank and cut: the kit is a single straight-on sprite, and a straight-on
+ * sprite cannot follow a curved bank. Every segment faces the camera whatever
+ * direction the shore is running, so the east and west shores read as stones
+ * dropped side-on and the corners do not turn at all. Enclosing the plaza this
+ * way needs an oriented kit — north, south, east and west runs plus inner and
+ * outer corners — not one sprite repeated around an ellipse. The treeline is
+ * carrying the boundary until that kit exists.
  */
-function placeBorderWall(grid: TerrainCell[][], placed: DecorItem[]): void {
-  const steps = 96
-  let segment = 0
-  for (let i = 0; i < steps; i++) {
-    const angle = (i / steps) * Math.PI * 2
-    // Walk inward from the water until the first dry cell: the bank itself.
-    // The search stops at 0.94 so the wall stays outside the treeline band.
-    for (let t = 0.995; t > 0.94; t -= 0.005) {
-      const x = Math.round(PLAZA_CENTER.x + Math.cos(angle) * t * CANAL_RX * TERRAIN_TILE)
-      const y = Math.round(PLAZA_CENTER.y + Math.sin(angle) * t * CANAL_RY * TERRAIN_TILE)
-      if (!standsOnGrass(grid, x, y)) continue
-      if (!clearsLandmarks(x, y, 8)) break
-      const key = segment % 8 === 7 ? 'prop-wall-pillar' : 'prop-wall'
-      if (tooClose(placed, key, x, y)) break
-      placed.push({ key, x, y })
-      segment++
-      break
-    }
-  }
-}
 
 export function buildDecor(): DecorItem[] {
   const grid = buildPlazaTerrainGrid()
   const rand = mulberry32(SCATTER_SEED)
   const placed: DecorItem[] = []
 
-  // Order matters: the wall claims the bank, anchored props claim the avenues
-  // and landmarks, and scattered foliage fills whatever grass is left.
-  placeBorderWall(grid, placed)
+  // Order matters: street furniture claims the avenues, then scattered foliage
+  // fills whatever grass is left.
   placeAnchored(grid, placed)
   for (const band of BANDS) scatterBand(grid, band, rand, placed)
 

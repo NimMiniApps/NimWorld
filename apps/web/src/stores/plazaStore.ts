@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import type { AppAdapters } from '@/adapters/createAdapters'
 import type { PlazaActor } from '@/adapters/presence/PresenceAdapter'
 import { NIMWORLD_TIP_ADDRESS, nimToLuna } from '@/adapters/payment/paymentConfig'
+import { fetchLiveBalanceNim } from '@/adapters/payment/balanceApi'
+import { getResolvedAddress } from '@/auth/session'
 import { loadPlazaPosition, savePlazaPosition } from '@/adapters/launcher/AppLauncher'
 import type { ArenaStatus, CatalogApp, InteractionTarget, PublicProfile, WorldPosition } from '@/domain/types'
 import { nimbomberManifest, playnimiqManifest } from '@nimworld/app-manifest'
@@ -219,9 +221,17 @@ export const usePlazaStore = defineStore('plaza', () => {
 
   async function refreshBalance() {
     if (!adapters) return
-    const next = await adapters.payment.getBalanceNim()
-    balanceNim.value = next
-    // Until a live wallet read exists, adapter returns the mock preview amount.
+    const address = profile.value?.address ?? getResolvedAddress()
+    if (address) {
+      const live = await fetchLiveBalanceNim(address)
+      if (live !== null) {
+        balanceNim.value = live
+        balanceIsPreview.value = false
+        return
+      }
+    }
+    // No session address or RPC unreachable: adapter returns the mock preview amount.
+    balanceNim.value = await adapters.payment.getBalanceNim()
     balanceIsPreview.value = true
   }
 

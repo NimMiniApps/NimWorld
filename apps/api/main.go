@@ -62,6 +62,7 @@ func main() {
 	mux.HandleFunc("/auth/me", s.withCORS(s.handleMe))
 	mux.HandleFunc("/auth/logout", s.withCORS(s.handleLogout))
 	mux.HandleFunc("/presence", s.withCORS(s.handlePresence))
+	mux.HandleFunc("/balance", s.withCORS(s.handleBalance))
 
 	port := os.Getenv("PORT")
 	if port == "" {

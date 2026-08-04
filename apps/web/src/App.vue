@@ -63,11 +63,10 @@ function onFirstMove() {
       @ready="onGameReady"
     />
 
-    <BootScreen v-if="!sessionResolved" status="Connecting…" />
+    <LoginGate v-if="sessionResolved && needsLogin" @authenticated="onAuthenticated" />
 
-    <LoginGate v-else-if="needsLogin" @authenticated="onAuthenticated" />
-
-    <BootScreen v-else-if="showBoot" :status="bootStatus" />
+    <!-- One instance across every loading phase: a remount would restart the progress bar. -->
+    <BootScreen v-else-if="!sessionResolved || showBoot" :status="bootStatus" />
 
     <div v-else-if="store.error" class="error-shell">
       <BootScreen status="Could not start" :busy="false">
@@ -86,13 +85,12 @@ function onFirstMove() {
         </div>
         <div class="top-right">
           <BalanceChip />
+          <div class="right-rail">
+            <FriendsShell />
+            <NearbyPlayers />
+          </div>
         </div>
       </header>
-
-      <div class="right-rail">
-        <FriendsShell />
-        <NearbyPlayers />
-      </div>
 
       <div
         v-if="showMoveHint && !store.openLocationId"
@@ -156,8 +154,21 @@ function onFirstMove() {
   pointer-events: auto;
 }
 
+/* Without this the 1fr column stretches the profile chip across half the screen. */
+.top-left {
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
+}
+
+/* Balance chip and rail share the right column so nothing can overlap the profile. */
 .top-right {
   justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  width: min(15.5rem, 44vw);
 }
 
 .brand {
@@ -185,15 +196,11 @@ function onFirstMove() {
 }
 
 .right-rail {
-  position: absolute;
-  top: calc(4.6rem + env(safe-area-inset-top));
-  right: 0.75rem;
-  z-index: 22;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.55rem;
-  width: min(15.5rem, calc(100vw - 1.5rem));
+  width: 100%;
   pointer-events: none;
 }
 
@@ -327,7 +334,40 @@ function onFirstMove() {
 
 @media (max-width: 899px) {
   .top {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* Phone top strip: chip fills the free column, right column shrinks to content. */
+  .top-left {
+    width: auto;
+  }
+
+  .top-left :deep(.chip) {
+    min-width: 0;
+  }
+
+  .top-right {
+    width: auto;
+  }
+
+  /* Disabled placeholders — not worth the width on a phone. */
+  .top-right :deep(.nw-icon-btn) {
+    display: none;
+  }
+
+  .right-rail {
+    align-items: flex-end;
+  }
+
+  /* Collapsed: pill-sized. Expanded: capped so it can't squeeze the profile chip. */
+  .right-rail :deep(.nearby) {
+    width: auto;
+    max-width: min(15.5rem, 56vw);
+  }
+
+  .move-hint {
+    top: auto;
+    bottom: calc(7.5rem + env(safe-area-inset-bottom));
   }
 
   .brand {

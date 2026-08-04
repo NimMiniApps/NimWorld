@@ -12,7 +12,7 @@ import { PREVIEW_FRIENDS } from './hudPreviewData'
 
     <ul class="list">
       <li v-for="friend in PREVIEW_FRIENDS" :key="friend.handle">
-        <IdenticonAvatar :address="friend.address" :fallback="friend.handle" size="1.85rem" />
+        <IdenticonAvatar :address="friend.address" :fallback="friend.handle" size="2.1rem" />
         <div class="meta">
           <p class="handle">{{ friend.handle }}</p>
           <p class="place">{{ friend.place }}</p>
