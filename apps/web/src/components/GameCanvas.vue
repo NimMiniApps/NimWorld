@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type Phaser from 'phaser'
 import { createAdapters } from '@/adapters/createAdapters'
+import { loadPlazaPosition } from '@/adapters/launcher/AppLauncher'
 import { createPlazaGame } from '@/game/createGame'
 import { worldBridge } from '@/game/bridge/WorldBridge'
 import { usePlazaStore } from '@/stores/plazaStore'
@@ -15,13 +16,27 @@ const host = ref<HTMLElement | null>(null)
 const store = usePlazaStore()
 let game: Phaser.Game | null = null
 let offFirstMove: (() => void) | null = null
+let pendingReturnAppId: string | null = null
+let spawnAtCreate: { x: number; y: number } | null = null
 
 const adapters = createAdapters()
 store.setAdapters(adapters)
 
+function stripReturnedFromQuery() {
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('returnedFrom')) return
+  url.searchParams.delete('returnedFrom')
+  const search = url.searchParams.toString()
+  window.history.replaceState({}, '', `${url.pathname}${search ? `?${search}` : ''}${url.hash}`)
+}
+
 onMounted(async () => {
   await store.bootstrap()
   if (!host.value) return
+
+  const params = new URLSearchParams(window.location.search)
+  pendingReturnAppId = params.get('returnedFrom')
+  if (pendingReturnAppId) stripReturnedFromQuery()
 
   // Subscribe before Phaser boots so PLAYER_READY is never missed.
   worldBridge.onWorld((event) => {
@@ -41,6 +56,15 @@ onMounted(async () => {
         break
       case 'PLAYER_READY':
         store.rememberPosition(event.position)
+        if (pendingReturnAppId) {
+          const appId = pendingReturnAppId
+          pendingReturnAppId = null
+          void store.refreshAfterReturn(appId)
+          if (!spawnAtCreate) {
+            const saved = loadPlazaPosition()
+            if (saved) worldBridge.emitUi({ type: 'RESTORE_POSITION', position: saved })
+          }
+        }
         emit('ready')
         break
       case 'RETURNED_FROM_APP':
@@ -51,23 +75,18 @@ onMounted(async () => {
 
   const actors = await adapters.presence.getActors()
   const label = store.profile?.handle ? `@${store.profile.handle}` : '@guest'
+  spawnAtCreate = store.lastPosition
 
   game = createPlazaGame(host.value, {
     bridge: worldBridge,
     actors,
-    spawn: store.lastPosition,
+    spawn: spawnAtCreate,
     playerLabel: label,
   })
 
   const onFirst = () => emit('firstMove')
   game.events.on('plaza-first-move', onFirst)
   offFirstMove = () => game?.events.off('plaza-first-move', onFirst)
-
-  const params = new URLSearchParams(window.location.search)
-  const returned = params.get('returnedFrom')
-  if (returned) {
-    worldBridge.emitWorld({ type: 'RETURNED_FROM_APP', appId: returned })
-  }
 })
 
 watch(
