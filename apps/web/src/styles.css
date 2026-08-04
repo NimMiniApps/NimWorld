@@ -13,6 +13,7 @@
   --nw-pink: #ff6b8a;
   --nw-font-display: 'Sora', system-ui, sans-serif;
   --nw-font-body: 'Mulish', system-ui, sans-serif;
+  --nw-font-pixel: 'Press Start 2P', 'Sora', system-ui, sans-serif;
   color: var(--nw-text);
   font-family: var(--nw-font-body);
   background: var(--nw-bg);
@@ -79,4 +80,38 @@ input {
 .nw-btn-ghost {
   background: transparent;
   color: var(--nw-muted);
+}
+
+.nw-hud-badge {
+  display: inline-block;
+  font-family: var(--nw-font-pixel);
+  font-size: 0.45rem;
+  letter-spacing: 0.04em;
+  color: var(--nw-gold);
+  border: 1px solid rgba(245, 166, 35, 0.45);
+  border-radius: 6px;
+  padding: 0.2rem 0.35rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.nw-icon-btn {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 12px;
+  border: 1px solid var(--nw-panel-border);
+  background: var(--nw-panel);
+  color: var(--nw-muted);
+  display: grid;
+  place-items: center;
+  cursor: not-allowed;
+  opacity: 0.65;
+  flex-shrink: 0;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.nw-icon-btn:disabled {
+  cursor: not-allowed;
 }

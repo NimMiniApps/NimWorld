@@ -4,12 +4,8 @@ import type { UiCommand, WorldPosition } from '@/domain/types'
 import type { WorldBridge } from '@/game/bridge/WorldBridge'
 import { CharacterSprite } from '@/game/entities/CharacterSprite'
 import type { CharSheet } from '@/game/assets/generatePlazaAtlas'
+import { ART_DISPLAY_SIZE } from '@/game/assets/artManifest'
 import {
-  ART_DISPLAY_SIZE,
-  fountainOverrideIncludesCrystal,
-} from '@/game/assets/artManifest'
-import {
-  DECOR,
   FUTURE_LANDMARKS,
   LOCATIONS,
   PLAZA_CENTER,
@@ -18,10 +14,23 @@ import {
   WORLD,
   type PlazaLocation,
 } from '@/game/world/locations'
-import { TERRAIN_TILESET_KEY } from '@/game/assets/loadTerrainTileset'
+import { DECOR } from '@/game/world/decorPlacement'
+import {
+  PATH_TILESET_KEY,
+  TERRAIN_TILESET_KEY,
+  WATER_TILESET_KEY,
+} from '@/game/assets/loadTerrainTileset'
+import { ARRAY_FULL_LOWER, ARRAY_FULL_UPPER } from '@/game/world/terrainTopology'
 import { buildPlazaTerrainGrid } from '@/game/world/plazaTerrainMap'
-import { resolveTerrainLayer } from '@/game/world/terrainResolver'
-import { TERRAIN_TILE } from '@/game/world/terrainTypes'
+import { resolveTerrainLayer, type CellPredicate } from '@/game/world/terrainResolver'
+import {
+  TERRAIN_TILE,
+  isPath,
+  isStoneFamily,
+  isWater,
+  type TerrainCell,
+} from '@/game/world/terrainTypes'
+import { buildBlockingRects } from '@/game/world/terrainCollision'
 import { getLocationToAutoOpen } from '@/game/world/locationEntry'
 
 export interface PlazaSceneData {
@@ -31,7 +40,35 @@ export interface PlazaSceneData {
   playerLabel?: string
 }
 
+/**
+ * Props the player cannot walk through, and the footprint each one blocks.
+ * Deliberately narrower than the sprite: the body sits at the base, so a canopy
+ * overhangs the player instead of stopping them a tree's width away.
+ */
+const SOLID_PROP_FOOTPRINTS: Record<string, { w: number; h: number }> = {
+  'prop-conifer': { w: 16, h: 14 },
+  'prop-broadleaf': { w: 20, h: 14 },
+  'prop-blossom': { w: 16, h: 14 },
+  'prop-oak': { w: 18, h: 14 },
+  'prop-poplar': { w: 14, h: 12 },
+  'prop-willow': { w: 18, h: 14 },
+  'prop-boulder': { w: 32, h: 18 },
+  'prop-hedge': { w: 46, h: 20 },
+}
+
+/** Foliage that catches the evening breeze. */
+const SWAYING_PROPS = new Set([
+  'prop-conifer',
+  'prop-broadleaf',
+  'prop-blossom',
+  'prop-oak',
+  'prop-poplar',
+  'prop-willow',
+  'prop-fern',
+])
+
 type AmbientActor = {
+  id?: string
   character: CharacterSprite
   label: Phaser.GameObjects.Text
   kind: PlazaActor['kind']
@@ -40,7 +77,12 @@ type AmbientActor = {
   phase: number
   displayName: string
   waypoints?: WorldPosition[]
+  waypointIndex: number
   glanceUntil: number
+  /** Online: live peer position. Ambient: current stroll destination. */
+  target?: WorldPosition
+  /** Ambient actors stand still until this timestamp. */
+  pauseUntil: number
 }
 
 export class PlazaScene extends Phaser.Scene {
@@ -59,12 +101,10 @@ export class PlazaScene extends Phaser.Scene {
   private activeLocationId: string | null = null
   private ambientActors: AmbientActor[] = []
   private depthSprites: Phaser.GameObjects.Image[] = []
-  private crystal: Phaser.GameObjects.Image | null = null
   private unsubUi: (() => boolean) | null = null
   private readonly speed = 155
   private hasMoved = false
-  private waterTiles: Phaser.GameObjects.Image[] = []
-  private flags: Phaser.GameObjects.Image[] = []
+  private terrainGrid: TerrainCell[][] = []
   private trees: Phaser.GameObjects.Image[] = []
 
   constructor() {
@@ -195,44 +235,67 @@ export class PlazaScene extends Phaser.Scene {
   private paintEnvironment() {
     // Opaque Wang terrain covering all cells (grass + stone transitions).
     // Phaser ARRAY_2D: empty is -1 only; index 0 is a real sheet frame (firstgid 0).
-    const indexes = resolveTerrainLayer(buildPlazaTerrainGrid())
-    const map = this.make.tilemap({
-      data: indexes,
-      tileWidth: TERRAIN_TILE,
-      tileHeight: TERRAIN_TILE,
-    })
-    const tileset = map.addTilesetImage(
-      TERRAIN_TILESET_KEY,
-      TERRAIN_TILESET_KEY,
-      TERRAIN_TILE,
-      TERRAIN_TILE,
-      0,
-      0,
-    )
-    if (!tileset) {
-      throw new Error(
-        `Plaza terrain tileset missing: expected texture key "${TERRAIN_TILESET_KEY}" (preload loadTerrainTileset?)`,
-      )
-    }
-    const layer = map.createLayer(0, tileset, 0, 0)
-    if (!layer) {
-      throw new Error(
-        `Plaza terrain TilemapLayer failed to create for tileset "${TERRAIN_TILESET_KEY}"`,
-      )
-    }
-    layer.setDepth(0)
+    this.terrainGrid = buildPlazaTerrainGrid()
 
-    // Rim water only (ponds / channels) — not a solid frame everywhere
-    const waterBand = [
-      ...this.rectBand(0, 0, WORLD.width, 40),
-      ...this.rectBand(0, WORLD.height - 48, WORLD.width, 48),
-      ...this.rectBand(0, 40, 40, WORLD.height - 88),
-      ...this.rectBand(WORLD.width - 40, 40, 40, WORLD.height - 88),
-    ]
-    for (const [x, y] of waterBand) {
-      const tile = this.add.image(x, y, 'tile-water').setDepth(1)
-      this.waterTiles.push(tile)
+    /**
+     * Every Wang layer is opaque — it paints its lower terrain wherever the
+     * upper one is absent — so stacked layers would occlude each other.
+     * Layers above the base blank their all-grass tile to -1 (Phaser's only
+     * "empty" index) and show through. Transition tiles still carry a little
+     * grass, which is why the canal sits well clear of the paved area.
+     *
+     * `blankIndex` is which array index is all-grass, and that differs by sheet:
+     * the water sheet has grass as its *upper* terrain, the inverse of the
+     * stone and path sheets. See the tileset READMEs under assets/art/tiles/.
+     */
+    const makeWangLayer = (
+      tilesetKey: string,
+      isUpper: CellPredicate,
+      depth: number,
+      blankIndex: number | null,
+    ) => {
+      const indexes = resolveTerrainLayer(this.terrainGrid, isUpper)
+      const data =
+        blankIndex === null
+          ? indexes
+          : indexes.map((row) => row.map((i) => (i === blankIndex ? -1 : i)))
+      const map = this.make.tilemap({
+        data,
+        tileWidth: TERRAIN_TILE,
+        tileHeight: TERRAIN_TILE,
+      })
+      const tileset = map.addTilesetImage(
+        tilesetKey,
+        tilesetKey,
+        TERRAIN_TILE,
+        TERRAIN_TILE,
+        0,
+        0,
+      )
+      if (!tileset) {
+        throw new Error(
+          `Plaza terrain tileset missing: expected texture key "${tilesetKey}" (preload loadTerrainTileset?)`,
+        )
+      }
+      const layer = map.createLayer(0, tileset, 0, 0)
+      if (!layer) {
+        throw new Error(`Plaza terrain TilemapLayer failed to create for tileset "${tilesetKey}"`)
+      }
+      layer.setDepth(depth)
+      return layer
     }
+
+    // Painter order: opaque grass base, then water, path, and stone above it.
+    // The base is a separate layer because each overlay only reaches as far as
+    // its own transition tiles; grass elsewhere has nothing else to paint it.
+    //
+    // The path layer is empty until C3 lays garden trails: the plaza ground plan
+    // is a single stone material, because two paved Wang layers cannot abut
+    // without a grass channel between them.
+    makeWangLayer(TERRAIN_TILESET_KEY, () => false, 0, null)
+    makeWangLayer(WATER_TILESET_KEY, (cell) => !isWater(cell), 0.1, ARRAY_FULL_UPPER)
+    makeWangLayer(PATH_TILESET_KEY, isPath, 0.2, ARRAY_FULL_LOWER)
+    makeWangLayer(TERRAIN_TILESET_KEY, isStoneFamily, 0.3, ARRAY_FULL_LOWER)
 
     // Soft blue-hour vignette
     const fog = this.add.graphics().setDepth(4)
@@ -245,16 +308,6 @@ export class PlazaScene extends Phaser.Scene {
     fog.fillRect(WORLD.width - 48, 0, 48, WORLD.height)
   }
 
-  private rectBand(x: number, y: number, w: number, h: number) {
-    const pts: Array<[number, number]> = []
-    for (let yy = y; yy < y + h; yy += 32) {
-      for (let xx = x; xx < x + w; xx += 32) {
-        pts.push([xx + 16, yy + 16])
-      }
-    }
-    return pts
-  }
-
   private placeDecor() {
     for (const item of DECOR) {
       const img = this.add.image(item.x, item.y, item.key)
@@ -264,19 +317,7 @@ export class PlazaScene extends Phaser.Scene {
       img.setDepth(100 + item.y + (item.depthBias ?? 0))
       this.depthSprites.push(img)
 
-      if (item.key.startsWith('prop-banner')) {
-        this.flags.push(img)
-        this.tweens.add({
-          targets: img,
-          scaleX: 0.88,
-          duration: 700 + (item.x % 200),
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut',
-        })
-      }
-
-      if (item.key === 'prop-tree') {
+      if (SWAYING_PROPS.has(item.key)) {
         this.trees.push(img)
         this.tweens.add({
           targets: img,
@@ -303,17 +344,6 @@ export class PlazaScene extends Phaser.Scene {
         })
       }
 
-      if (item.key === 'prop-firepit') {
-        const fire = this.add.circle(item.x, item.y - 14, 12, 0xff8a3d, 0.2).setDepth(5)
-        this.tweens.add({
-          targets: fire,
-          alpha: 0.35,
-          scale: 1.15,
-          duration: 500,
-          yoyo: true,
-          repeat: -1,
-        })
-      }
     }
   }
 
@@ -450,7 +480,6 @@ export class PlazaScene extends Phaser.Scene {
 
   private placeFountain() {
     const { x, y } = PLAZA_CENTER
-    const combined = fountainOverrideIncludesCrystal()
     const base = this.add.image(x, y + 10, 'fountain-base')
     base.setOrigin(0.5, 0.75)
     const fountainSize = ART_DISPLAY_SIZE['fountain-base']
@@ -469,20 +498,6 @@ export class PlazaScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1,
     })
-
-    if (!combined) {
-      this.crystal = this.add.image(x, y - 22, 'fountain-crystal')
-      this.crystal.setDepth(100 + y + 2)
-      this.tweens.add({
-        targets: this.crystal,
-        y: y - 30,
-        angle: 8,
-        duration: 1600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      })
-    }
 
     // Sparse particles — alive, not busy
     for (let i = 0; i < 6; i++) {
@@ -543,41 +558,123 @@ export class PlazaScene extends Phaser.Scene {
     const fallbackSheets: CharSheet[] = ['char-npc-a', 'char-npc-b', 'char-npc-c']
 
     for (const actor of actors) {
-      const home = actor.position
-      const isGhost = actor.kind === 'ghost'
-      const sheet: CharSheet = isGhost
-        ? 'char-ghost'
-        : actor.sheet
-          ? sheetMap[actor.sheet]!
-          : fallbackSheets[npcIndex++ % fallbackSheets.length]!
+      if (actor.kind === 'online') {
+        this.upsertOnlineActor(actor)
+        continue
+      }
+      this.spawnAmbientActor(actor, sheetMap, fallbackSheets, npcIndex++)
+    }
+  }
 
-      const character = new CharacterSprite(this, home.x, home.y, sheet, isGhost)
-      const body = character.sprite.body as Phaser.Physics.Arcade.Body | null
-      if (body) body.enable = false
+  private spawnAmbientActor(
+    actor: PlazaActor,
+    sheetMap: Record<string, CharSheet>,
+    fallbackSheets: CharSheet[],
+    npcIndex: number,
+  ) {
+    const home = actor.position
+    const isGhost = actor.kind === 'ghost'
+    const sheet: CharSheet = isGhost
+      ? 'char-ghost'
+      : actor.sheet
+        ? sheetMap[actor.sheet]!
+        : fallbackSheets[npcIndex % fallbackSheets.length]!
 
-      const label = this.add
-        .text(home.x, home.y - 40, actor.label, {
-          fontFamily: 'Mulish, sans-serif',
-          fontSize: '10px',
-          color: isGhost ? '#ffe29a' : '#d7deff',
-          stroke: '#0c1020',
-          strokeThickness: 3,
-        })
-        .setOrigin(0.5)
-        .setDepth(10000)
-        .setAlpha(0)
+    const character = new CharacterSprite(this, home.x, home.y, sheet, isGhost)
+    const body = character.sprite.body as Phaser.Physics.Arcade.Body | null
+    if (body) body.enable = false
 
-      this.ambientActors.push({
-        character,
-        label,
-        kind: actor.kind,
-        statusLabel: actor.statusLabel,
-        home,
-        phase: Math.random() * Math.PI * 2,
-        displayName: actor.label,
-        waypoints: actor.waypoints,
-        glanceUntil: 0,
+    const label = this.add
+      .text(home.x, home.y - 40, actor.label, {
+        fontFamily: 'Mulish, sans-serif',
+        fontSize: '10px',
+        color: isGhost ? '#ffe29a' : '#d7deff',
+        stroke: '#0c1020',
+        strokeThickness: 3,
       })
+      .setOrigin(0.5)
+      .setDepth(10000)
+      .setAlpha(0)
+
+    this.ambientActors.push({
+      id: actor.id,
+      character,
+      label,
+      kind: actor.kind,
+      statusLabel: actor.statusLabel,
+      home,
+      phase: Math.random() * Math.PI * 2,
+      displayName: actor.label,
+      waypoints: actor.waypoints,
+      waypointIndex: 0,
+      glanceUntil: 0,
+      pauseUntil: 0,
+    })
+  }
+
+  private upsertOnlineActor(actor: PlazaActor) {
+    const existing = this.ambientActors.find((a) => a.id === actor.id && a.kind === 'online')
+    if (existing) {
+      existing.target = { ...actor.position }
+      existing.home = { ...actor.position }
+      existing.displayName = actor.label
+      existing.statusLabel = actor.statusLabel
+      existing.label.setText(actor.label)
+      return
+    }
+
+    const sheetMap: Record<string, CharSheet> = {
+      a: 'char-npc-a',
+      b: 'char-npc-b',
+      c: 'char-npc-c',
+      d: 'char-npc-d',
+      e: 'char-npc-e',
+    }
+    const sheet: CharSheet = actor.sheet ? sheetMap[actor.sheet]! : 'char-npc-a'
+    const character = new CharacterSprite(this, actor.position.x, actor.position.y, sheet, false)
+    const body = character.sprite.body as Phaser.Physics.Arcade.Body | null
+    if (body) body.enable = false
+
+    const label = this.add
+      .text(actor.position.x, actor.position.y - 40, actor.label, {
+        fontFamily: 'Mulish, sans-serif',
+        fontSize: '10px',
+        color: '#9ef0ff',
+        stroke: '#0c1020',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(10000)
+      .setAlpha(0)
+
+    this.ambientActors.push({
+      id: actor.id,
+      character,
+      label,
+      kind: 'online',
+      statusLabel: actor.statusLabel,
+      home: { ...actor.position },
+      target: { ...actor.position },
+      phase: 0,
+      displayName: actor.label,
+      waypointIndex: 0,
+      glanceUntil: 0,
+      pauseUntil: 0,
+    })
+  }
+
+  private syncOnlineActors(actors: PlazaActor[]) {
+    const onlineIds = new Set(actors.map((a) => a.id))
+    for (const actor of actors) {
+      if (actor.kind === 'online') this.upsertOnlineActor(actor)
+    }
+    for (let i = this.ambientActors.length - 1; i >= 0; i--) {
+      const ambient = this.ambientActors[i]!
+      if (ambient.kind !== 'online') continue
+      if (ambient.id && onlineIds.has(ambient.id)) continue
+      ambient.character.sprite.destroy()
+      ambient.label.destroy()
+      this.ambientActors.splice(i, 1)
     }
   }
 
@@ -594,12 +691,41 @@ export class PlazaScene extends Phaser.Scene {
       this.physics.add.existing(body, true)
       walls.add(body)
     }
-    for (const item of DECOR.filter((d) => d.key === 'prop-tree' || d.key === 'prop-fence')) {
-      const body = this.add.rectangle(item.x, item.y - 8, item.key === 'prop-fence' ? 40 : 18, 14, 0x000000, 0)
+    // Solid props. The border wall is collidable here rather than as terrain:
+    // water stays the only blocking cell type, so a wall is just a prop you
+    // cannot walk through.
+    for (const item of DECOR) {
+      const footprint = SOLID_PROP_FOOTPRINTS[item.key]
+      if (!footprint) continue
+      const body = this.add.rectangle(
+        item.x,
+        item.y - 8,
+        footprint.w,
+        footprint.h,
+        0x000000,
+        0,
+      )
       this.physics.add.existing(body, true)
       walls.add(body)
     }
     this.physics.add.collider(this.player.sprite, walls)
+
+    // Impassable terrain (the canal). Run-merged so the ring costs tens of
+    // bodies, not hundreds.
+    const blocking = this.physics.add.staticGroup()
+    for (const rect of buildBlockingRects(this.terrainGrid)) {
+      const body = this.add.rectangle(
+        rect.x + rect.width / 2,
+        rect.y + rect.height / 2,
+        rect.width,
+        rect.height,
+        0x000000,
+        0,
+      )
+      this.physics.add.existing(body, true)
+      blocking.add(body)
+    }
+    this.physics.add.collider(this.player.sprite, blocking)
   }
 
   private handleUi(command: UiCommand) {
@@ -622,6 +748,29 @@ export class PlazaScene extends Phaser.Scene {
       case 'TRIGGER_INTERACT':
         this.tryInteract()
         break
+      case 'SYNC_ONLINE_ACTORS':
+        this.syncOnlineActors(command.actors)
+        break
+      case 'PEER_MOVED': {
+        const peer = this.ambientActors.find((a) => a.id === command.id && a.kind === 'online')
+        if (peer) {
+          peer.target = { ...command.position }
+          peer.home = { ...command.position }
+        } else {
+          // Peer moved before roster SYNC landed — spawn from the move packet.
+          this.upsertOnlineActor({
+            id: command.id,
+            label: command.id.length > 12 ? `${command.id.slice(0, 8)}…` : command.id,
+            kind: 'online',
+            statusLabel: 'Online',
+            position: command.position,
+            color: 0x58c4ff,
+            sheet: 'a',
+            address: command.id,
+          })
+        }
+        break
+      }
     }
   }
 
@@ -661,9 +810,8 @@ export class PlazaScene extends Phaser.Scene {
     this.playerLabelText.setDepth(10000)
 
     this.updateProximity()
-    this.updateAmbient()
+    this.updateAmbient(_delta)
     this.updateLabels()
-    this.animateWater()
   }
 
   private updateProximity() {
@@ -725,20 +873,39 @@ export class PlazaScene extends Phaser.Scene {
     }
   }
 
-  private updateAmbient() {
+  private updateAmbient(deltaMs = 16.67) {
     const t = this.time.now / 1000
     const now = this.time.now
+    // Slightly faster than local player (155) so remotes catch up between packets.
+    const remoteSpeed = 175
+    const maxStep = remoteSpeed * (deltaMs / 1000)
 
     for (const actor of this.ambientActors) {
       const prevX = actor.character.x
       const prevY = actor.character.y
 
-      // Glance at player when nearby
-      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, prevX, prevY)
-      if (dist < 80 && actor.kind === 'npc') {
-        if (now > actor.glanceUntil) {
-          actor.glanceUntil = now + 1200
+      if (actor.kind === 'online' && actor.target) {
+        const dx = actor.target.x - prevX
+        const dy = actor.target.y - prevY
+        const dist = Math.hypot(dx, dy)
+        if (dist <= 0.5) {
+          actor.character.ambientStep(prevX, prevY, prevX, prevY)
+        } else if (dist <= maxStep) {
+          actor.character.ambientStep(actor.target.x, actor.target.y, prevX, prevY)
+        } else {
+          const x = prevX + (dx / dist) * maxStep
+          const y = prevY + (dy / dist) * maxStep
+          actor.character.ambientStep(x, y, prevX, prevY)
         }
+        actor.character.updateDepth(100)
+        continue
+      }
+
+      // Glance at player when nearby. The cooldown matters: re-arming every
+      // frame froze NPCs facing you for as long as you stood there.
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, prevX, prevY)
+      if (dist < 80 && actor.kind === 'npc' && now > actor.glanceUntil + 5000) {
+        actor.glanceUntil = now + 1400
       }
 
       if (now < actor.glanceUntil && actor.kind === 'npc') {
@@ -747,30 +914,55 @@ export class PlazaScene extends Phaser.Scene {
         continue
       }
 
-      if (actor.waypoints && actor.waypoints.length > 1) {
-        // Courier-style path between landmarks
-        const seg = actor.waypoints.length
-        const speed = 0.12
-        const total = t * speed + actor.phase
-        const idx = Math.floor(total) % seg
-        const next = (idx + 1) % seg
-        const localT = total - Math.floor(total)
-        const a = actor.waypoints[idx]!
-        const b = actor.waypoints[next]!
-        const x = a.x + (b.x - a.x) * localT
-        const y = a.y + (b.y - a.y) * localT
-        actor.character.ambientStep(x, y, prevX, prevY)
+      if (now < actor.pauseUntil) {
+        actor.character.ambientStep(prevX, prevY, prevX, prevY)
+        actor.character.updateDepth(100)
+        continue
+      }
+
+      // Integrated stroll toward a destination. The old version sampled a
+      // position straight off the clock, which both crept too slowly to read
+      // as walking and teleported the actor forward after every glance pause.
+      const target = (actor.target ??= this.nextAmbientTarget(actor))
+      const speed = actor.waypoints ? 62 : actor.kind === 'ghost' ? 30 : 52
+      const step = speed * (deltaMs / 1000)
+      const tx = target.x - prevX
+      const ty = target.y - prevY
+      const remaining = Math.hypot(tx, ty)
+      if (remaining <= step) {
+        actor.character.ambientStep(target.x, target.y, prevX, prevY)
+        actor.target = undefined
+        actor.pauseUntil = now + (actor.waypoints ? 600 : 900 + Math.random() * 2400)
       } else {
-        const radius = actor.kind === 'npc' ? 18 : 12
-        const x = actor.home.x + Math.cos(t * 0.45 + actor.phase) * radius
-        const y = actor.home.y + Math.sin(t * 0.35 + actor.phase) * (radius * 0.5)
-        actor.character.ambientStep(x, y, prevX, prevY)
+        actor.character.ambientStep(
+          prevX + (tx / remaining) * step,
+          prevY + (ty / remaining) * step,
+          prevX,
+          prevY,
+        )
       }
 
       actor.character.updateDepth(100)
       if (actor.kind === 'ghost') {
         actor.character.sprite.setAlpha(0.45 + 0.2 * Math.sin(t * 2 + actor.phase))
       }
+    }
+  }
+
+  /** Next stroll destination: the following waypoint, or a spot near home. */
+  private nextAmbientTarget(actor: AmbientActor): WorldPosition {
+    if (actor.waypoints && actor.waypoints.length > 1) {
+      actor.waypointIndex = (actor.waypointIndex + 1) % actor.waypoints.length
+      return { ...actor.waypoints[actor.waypointIndex]! }
+    }
+    // ponytail: no pathfinding — ambient bodies have physics disabled and the
+    // radius is small enough to stay off the props. Add a walkability check
+    // here if NPCs start strolling through hedges.
+    const radius = (actor.kind === 'npc' ? 36 : 24) * (0.5 + Math.random() * 0.5)
+    const angle = Math.random() * Math.PI * 2
+    return {
+      x: actor.home.x + Math.cos(angle) * radius,
+      y: actor.home.y + Math.sin(angle) * radius * 0.6,
     }
   }
 
@@ -804,14 +996,6 @@ export class PlazaScene extends Phaser.Scene {
       } else {
         actor.label.setAlpha(0)
       }
-    }
-  }
-
-  private animateWater() {
-    const t = this.time.now / 400
-    for (let i = 0; i < this.waterTiles.length; i++) {
-      const tile = this.waterTiles[i]!
-      tile.setAlpha(0.85 + Math.sin(t + i * 0.35) * 0.08)
     }
   }
 

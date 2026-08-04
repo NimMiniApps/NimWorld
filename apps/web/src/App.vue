@@ -4,6 +4,11 @@ import GameCanvas from '@/components/GameCanvas.vue'
 import BootScreen from '@/components/BootScreen.vue'
 import LoginGate from '@/components/LoginGate.vue'
 import ProfileChip from '@/components/hud/ProfileChip.vue'
+import BalanceChip from '@/components/hud/BalanceChip.vue'
+import BottomNav from '@/components/hud/BottomNav.vue'
+import ChatShell from '@/components/hud/ChatShell.vue'
+import FriendsShell from '@/components/hud/FriendsShell.vue'
+import EventsShell from '@/components/hud/EventsShell.vue'
 import InteractionPrompt from '@/components/hud/InteractionPrompt.vue'
 import VirtualJoystick from '@/components/hud/VirtualJoystick.vue'
 import NearbyPlayers from '@/components/hud/NearbyPlayers.vue'
@@ -58,11 +63,10 @@ function onFirstMove() {
       @ready="onGameReady"
     />
 
-    <BootScreen v-if="!sessionResolved" status="Connecting…" />
+    <LoginGate v-if="sessionResolved && needsLogin" @authenticated="onAuthenticated" />
 
-    <LoginGate v-else-if="needsLogin" @authenticated="onAuthenticated" />
-
-    <BootScreen v-else-if="showBoot" :status="bootStatus" />
+    <!-- One instance across every loading phase: a remount would restart the progress bar. -->
+    <BootScreen v-else-if="!sessionResolved || showBoot" :status="bootStatus" />
 
     <div v-else-if="store.error" class="error-shell">
       <BootScreen status="Could not start" :busy="false">
@@ -72,10 +76,19 @@ function onFirstMove() {
 
     <template v-else>
       <header class="top">
-        <ProfileChip />
+        <div class="top-left">
+          <ProfileChip />
+        </div>
         <div class="brand">
-          <p class="display title">NimWorld</p>
-          <p class="tagline">Your identity. Your apps. Your plaza.</p>
+          <p class="display title">NIMCONNECT PLAZA</p>
+          <p class="tagline">Your identity. Your apps. Your world.</p>
+        </div>
+        <div class="top-right">
+          <BalanceChip />
+          <div class="right-rail">
+            <FriendsShell />
+            <NearbyPlayers />
+          </div>
         </div>
       </header>
 
@@ -87,18 +100,25 @@ function onFirstMove() {
         Move with the stick or WASD
       </div>
 
-      <NearbyPlayers />
-
       <div class="center-prompt">
         <InteractionPrompt />
       </div>
 
       <div v-if="store.celebration" class="toast nw-panel">{{ store.celebration }}</div>
 
-      <footer class="bottom">
+      <div class="bottom-left">
+        <ChatShell />
         <VirtualJoystick />
+      </div>
+
+      <footer class="bottom">
+        <BottomNav />
         <p class="hint" :class="{ faded: !showMoveHint }">Walk up to a landmark to enter</p>
       </footer>
+
+      <div class="bottom-right">
+        <EventsShell />
+      </div>
     </template>
 
     <LocationOverlay />
@@ -121,35 +141,76 @@ function onFirstMove() {
   left: 0;
   right: 0;
   z-index: 20;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.75rem;
   padding: calc(0.65rem + env(safe-area-inset-top)) 0.75rem 0;
   pointer-events: none;
 }
 
-.top :deep(.chip) {
+.top-left,
+.top-right {
   pointer-events: auto;
 }
 
+/* Without this the 1fr column stretches the profile chip across half the screen. */
+.top-left {
+  justify-self: start;
+  width: max-content;
+  max-width: 100%;
+}
+
+/* Balance chip and rail share the right column so nothing can overlap the profile. */
+.top-right {
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  width: min(15.5rem, 44vw);
+}
+
 .brand {
-  text-align: right;
+  text-align: center;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  padding-top: 0.15rem;
 }
 
 .title {
   margin: 0;
-  font-size: clamp(1.15rem, 3.6vw, 1.55rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-family: var(--nw-font-pixel);
+  font-size: clamp(0.55rem, 1.6vw, 0.72rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
   color: var(--nw-gold);
+  text-shadow:
+    0 0 12px rgba(245, 166, 35, 0.35),
+    0 2px 12px rgba(0, 0, 0, 0.55);
 }
 
 .tagline {
-  margin: 0.15rem 0 0;
+  margin: 0.35rem 0 0;
   color: var(--nw-muted);
   font-size: 0.72rem;
+}
+
+.right-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  width: 100%;
+  pointer-events: none;
+}
+
+.right-rail :deep(.shell),
+.right-rail :deep(.nearby) {
+  pointer-events: auto;
+  position: static;
+  width: 100%;
+  top: auto;
+  right: auto;
 }
 
 .move-hint {
@@ -168,35 +229,64 @@ function onFirstMove() {
 .center-prompt {
   position: absolute;
   left: 50%;
-  bottom: calc(8.2rem + env(safe-area-inset-bottom));
+  bottom: calc(8.8rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 22;
 }
 
-.bottom {
+.bottom-left {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: 0.75rem;
+  bottom: calc(0.7rem + env(safe-area-inset-bottom));
   z-index: 22;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0 0.75rem calc(0.7rem + env(safe-area-inset-bottom));
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
   pointer-events: none;
 }
 
-.bottom :deep(.joystick) {
+.bottom-left :deep(.shell),
+.bottom-left :deep(.joystick) {
+  pointer-events: auto;
+}
+
+.bottom-right {
+  position: absolute;
+  right: 0.75rem;
+  bottom: calc(5.8rem + env(safe-area-inset-bottom));
+  z-index: 22;
+  pointer-events: none;
+}
+
+.bottom-right :deep(.shell) {
+  pointer-events: auto;
+}
+
+.bottom {
+  position: absolute;
+  left: 50%;
+  bottom: calc(0.7rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 23;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.bottom :deep(.bottom-nav) {
   pointer-events: auto;
 }
 
 .hint {
-  margin: 0 0 0.35rem;
+  margin: 0;
   color: rgba(214, 222, 255, 0.75);
   font-size: 0.72rem;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
   transition: opacity 500ms ease;
+  order: -1;
 }
 
 .hint.faded {
@@ -242,8 +332,59 @@ function onFirstMove() {
   }
 }
 
+@media (max-width: 899px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* Phone top strip: chip fills the free column, right column shrinks to content. */
+  .top-left {
+    width: auto;
+  }
+
+  .top-left :deep(.chip) {
+    min-width: 0;
+  }
+
+  .top-right {
+    width: auto;
+  }
+
+  /* Disabled placeholders — not worth the width on a phone. */
+  .top-right :deep(.nw-icon-btn) {
+    display: none;
+  }
+
+  .right-rail {
+    align-items: flex-end;
+  }
+
+  /* Collapsed: pill-sized. Expanded: capped so it can't squeeze the profile chip. */
+  .right-rail :deep(.nearby) {
+    width: auto;
+    max-width: min(15.5rem, 56vw);
+  }
+
+  .move-hint {
+    top: auto;
+    bottom: calc(7.5rem + env(safe-area-inset-bottom));
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .top-right {
+    grid-column: 2;
+  }
+
+  .hint {
+    display: none;
+  }
+}
+
 @media (min-width: 900px) {
-  .bottom :deep(.joystick) {
+  .bottom-left :deep(.joystick) {
     opacity: 0.4;
   }
 }

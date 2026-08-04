@@ -3,12 +3,17 @@ import {
   TERRAIN_CONSTRUCTION,
   TERRAIN_ENTRANCE,
   TERRAIN_GRASS,
+  TERRAIN_PATH,
   TERRAIN_PLAZA,
+  TERRAIN_WATER,
+  isPath,
+  isStoneFamily,
+  isWater,
   type TerrainCell,
 } from './terrainTypes'
 import {
-  ARRAY_FULL_GRASS,
-  ARRAY_FULL_STONE,
+  ARRAY_FULL_LOWER,
+  ARRAY_FULL_UPPER,
   CORNER_NE,
   CORNER_NW,
   CORNER_SE,
@@ -130,7 +135,7 @@ describe('terrainResolver — verified Wang topology', () => {
 
       // Tile (1,1) samples all four stone cells → full stone wang 15 → array 12
       expect(resolveCornerMask(grid, 1, 1)).toBe(15)
-      expect(resolveTileIndex(grid, 1, 1)).toBe(ARRAY_FULL_STONE)
+      expect(resolveTileIndex(grid, 1, 1)).toBe(ARRAY_FULL_UPPER)
 
       // Tile (0,0) only SE touches the block → wang 1 → array 7 (convex outer)
       expect(resolveCornerMask(grid, 0, 0)).toBe(CORNER_SE)
@@ -172,7 +177,7 @@ describe('terrainResolver — verified Wang topology', () => {
         for (let c = 1; c <= 3; c++) grid[r][c] = TERRAIN_PLAZA
       }
       expect(resolveCornerMask(grid, 2, 2)).toBe(15)
-      expect(resolveTileIndex(grid, 2, 2)).toBe(ARRAY_FULL_STONE)
+      expect(resolveTileIndex(grid, 2, 2)).toBe(ARRAY_FULL_UPPER)
     })
 
     it('map-edge: out-of-bounds corners count as grass', () => {
@@ -184,7 +189,7 @@ describe('terrainResolver — verified Wang topology', () => {
 
       // Tile (1,0): NW=grass, NE=OOB=grass, SW=grass, SE=OOB=grass → wang 0
       expect(resolveCornerMask(grid, 1, 0)).toBe(0)
-      expect(resolveTileIndex(grid, 1, 0)).toBe(ARRAY_FULL_GRASS)
+      expect(resolveTileIndex(grid, 1, 0)).toBe(ARRAY_FULL_LOWER)
 
       // Tile (0,1): NW=grass, NE=grass, SW=OOB, SE=OOB → wang 0
       expect(resolveCornerMask(grid, 0, 1)).toBe(0)
@@ -197,7 +202,7 @@ describe('terrainResolver — verified Wang topology', () => {
       grid[1][0] = TERRAIN_PLAZA
       grid[1][1] = TERRAIN_ENTRANCE
       expect(resolveCornerMask(grid, 0, 0)).toBe(15)
-      expect(resolveTileIndex(grid, 0, 0)).toBe(ARRAY_FULL_STONE)
+      expect(resolveTileIndex(grid, 0, 0)).toBe(ARRAY_FULL_UPPER)
     })
   })
 
@@ -208,7 +213,7 @@ describe('terrainResolver — verified Wang topology', () => {
       expect(layer).toHaveLength(3)
       for (const row of layer) {
         expect(row).toHaveLength(4)
-        for (const idx of row) expect(idx).toBe(ARRAY_FULL_GRASS)
+        for (const idx of row) expect(idx).toBe(ARRAY_FULL_LOWER)
       }
     })
 
@@ -223,7 +228,7 @@ describe('terrainResolver — verified Wang topology', () => {
       // Interior: c < cols-1 && r < rows-1 → full stone
       for (let r = 0; r < rows - 1; r++) {
         for (let c = 0; c < cols - 1; c++) {
-          expect(layer[r][c]).toBe(ARRAY_FULL_STONE)
+          expect(layer[r][c]).toBe(ARRAY_FULL_UPPER)
         }
       }
 
@@ -243,5 +248,46 @@ describe('terrainResolver — verified Wang topology', () => {
       expect(resolveCornerMask(grid, cols - 1, rows - 1)).toBe(CORNER_NW)
       expect(layer[rows - 1][cols - 1]).toBe(5)
     })
+  })
+})
+
+describe('resolver predicate parameter', () => {
+  it('defaults to the stone family when no predicate is given', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_PLAZA, TERRAIN_GRASS],
+      [TERRAIN_GRASS, TERRAIN_GRASS],
+    ]
+    expect(resolveCornerMask(grid, 0, 0)).toBe(CORNER_NW)
+  })
+
+  it('resolves a water layer when given the water predicate', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_WATER, TERRAIN_GRASS],
+      [TERRAIN_GRASS, TERRAIN_GRASS],
+    ]
+    // Water is upper for this layer; stone family sees nothing.
+    expect(resolveCornerMask(grid, 0, 0, isWater)).toBe(CORNER_NW)
+    expect(resolveCornerMask(grid, 0, 0)).toBe(0)
+  })
+
+  it('resolves a path layer independently of stone', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_PATH, TERRAIN_PLAZA],
+      [TERRAIN_GRASS, TERRAIN_GRASS],
+    ]
+    expect(resolveCornerMask(grid, 0, 0, isPath)).toBe(CORNER_NW)
+    expect(resolveCornerMask(grid, 0, 0, isStoneFamily)).toBe(CORNER_NE)
+  })
+
+  it('applies the predicate across a whole layer', () => {
+    const grid: TerrainCell[][] = [
+      [TERRAIN_WATER, TERRAIN_WATER],
+      [TERRAIN_WATER, TERRAIN_WATER],
+    ]
+    const layer = resolveTerrainLayer(grid, isWater)
+    expect(layer).toHaveLength(2)
+    expect(layer[0]).toHaveLength(2)
+    // Top-left display tile has all four corners water.
+    expect(layer[0]![0]).toBe(resolveTileIndex(grid, 0, 0, isWater))
   })
 })

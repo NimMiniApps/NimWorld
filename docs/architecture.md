@@ -31,7 +31,7 @@ Vue HUD / overlays  <── WorldBridge ──>  Phaser plaza
 | Mini App SDK (embedded Pay) | `init` + `listAccounts` → `resolvedAddress`; Hub login only outside Pay |
 | App launch / return | Hybrid: Pay `location.assign`, browser `window.open`; `returnUrl` includes `returnedFrom=<appId>` |
 | Mini App SDK payments | Hybrid: Pay `sendBasicTransaction`; desktop Hub `checkout`; tip jar + Nearby send + request-link |
-| Presence WebSocket | Not implemented; local ghosts/NPCs only |
+| Presence WebSocket | `apps/api` `/presence` (cookie session); client merges live peers + local NPCs/ghosts; falls back when WS unavailable |
 
 ## Bridge events
 

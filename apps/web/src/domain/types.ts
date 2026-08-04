@@ -11,6 +11,18 @@ export interface InteractionTarget {
   kind: string
 }
 
+/** Minimal actor payload for live presence sync into Phaser. */
+export interface OnlineActorSync {
+  id: string
+  label: string
+  kind: 'online'
+  statusLabel: string
+  position: WorldPosition
+  color: number
+  sheet?: 'a' | 'b' | 'c' | 'd' | 'e'
+  address?: string
+}
+
 export type WorldEvent =
   | { type: 'INTERACTION_AVAILABLE'; target: InteractionTarget }
   | { type: 'INTERACTION_CLEARED' }
@@ -25,6 +37,8 @@ export type UiCommand =
   | { type: 'RESTORE_POSITION'; position: WorldPosition }
   | { type: 'SET_INPUT_VECTOR'; x: number; y: number }
   | { type: 'TRIGGER_INTERACT' }
+  | { type: 'SYNC_ONLINE_ACTORS'; actors: OnlineActorSync[] }
+  | { type: 'PEER_MOVED'; id: string; position: WorldPosition }
 
 export interface PublicProfile {
   address: string

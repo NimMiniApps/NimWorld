@@ -18,6 +18,7 @@ type server struct {
 	tokens       signedToken
 	cookieSecure bool
 	allowOrigin  string
+	hub          *plazaHub
 }
 
 type challengeResponse struct {
@@ -52,6 +53,7 @@ func main() {
 		tokens:       signedToken{secret: []byte(secret)},
 		cookieSecure: os.Getenv("COOKIE_INSECURE") == "",
 		allowOrigin:  os.Getenv("ALLOW_ORIGIN"),
+		hub:          newPlazaHub(),
 	}
 
 	mux := http.NewServeMux()
@@ -59,6 +61,8 @@ func main() {
 	mux.HandleFunc("/auth/verify", s.withCORS(s.handleVerify))
 	mux.HandleFunc("/auth/me", s.withCORS(s.handleMe))
 	mux.HandleFunc("/auth/logout", s.withCORS(s.handleLogout))
+	mux.HandleFunc("/presence", s.withCORS(s.handlePresence))
+	mux.HandleFunc("/balance", s.withCORS(s.handleBalance))
 
 	port := os.Getenv("PORT")
 	if port == "" {

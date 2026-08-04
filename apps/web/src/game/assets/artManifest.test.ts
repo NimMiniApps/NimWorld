@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fountainOverrideIncludesCrystal, resolveArtOverride } from './artManifest'
+import { resolveArtOverride } from './artManifest'
 
 describe('artManifest', () => {
   it('maps approved fountain to fountain-base key', () => {
@@ -10,17 +10,16 @@ describe('artManifest', () => {
     expect(resolveArtOverride('tile-grass')).toBeNull()
   })
 
-  it('treats approved fountain as combined crystal sprite', () => {
-    expect(fountainOverrideIncludesCrystal()).toBe(true)
-  })
-
   it('maps V4 character sheets to Phaser keys', () => {
-    expect(resolveArtOverride('char-player')).toBe('characters/player_sheet_v01.png')
+    expect(resolveArtOverride('char-player')).toBe('characters/player_sheet_v02.png')
     expect(resolveArtOverride('char-npc-a')).toBe('characters/guide_sheet_v01.png')
-    expect(resolveArtOverride('char-npc-c')).toBe('characters/courier_sheet_v01.png')
+    expect(resolveArtOverride('char-npc-c')).toBe('characters/courier_sheet_v02.png')
     expect(resolveArtOverride('char-npc-d')).toBe('characters/tournament_master_sheet_v01.png')
     expect(resolveArtOverride('char-npc-e')).toBe('characters/builder_sheet_v01.png')
-    // Gardener stays procedural until a V4 sheet exists.
-    expect(resolveArtOverride('char-npc-b')).toBeNull()
+    expect(resolveArtOverride('char-npc-b')).toBe('characters/gardener_sheet_v02.png')
+  })
+
+  it('gives ghosts a real sheet instead of the procedural placeholder', () => {
+    expect(resolveArtOverride('char-ghost')).toBe('characters/player_sheet_v02.png')
   })
 })

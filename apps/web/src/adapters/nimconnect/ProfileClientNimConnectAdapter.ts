@@ -1,5 +1,4 @@
 import { createProfileClient } from '@nimconnect/profile-client'
-import Identicons from '@nimiq/identicons'
 import type {
   Achievement,
   InventoryItem,
@@ -7,6 +6,7 @@ import type {
   PublicFriend,
   PublicProfile,
 } from '@/domain/types'
+import { identiconDataUrl } from '@/lib/identicon'
 import {
   MOCK_ACHIEVEMENTS,
   MOCK_FRIENDS,
@@ -34,34 +34,25 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   async initialize(): Promise<void> {
     const address = this.address ?? this.fallbackAddress ?? null
     if (!address) {
-      this.cachedProfile = { ...MOCK_PROFILE, source: 'mock' }
+      this.cachedProfile = await withIdenticon({ ...MOCK_PROFILE, source: 'mock' })
       return
     }
 
     try {
       const identity = await this.client.getDisplayIdentity(address)
-      let avatarDataUrl: string | undefined
-      try {
-        const svg = await Identicons.svg(address)
-        avatarDataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
-      } catch {
-        // identicon optional
-      }
-
-      this.cachedProfile = {
+      this.cachedProfile = await withIdenticon({
         address: identity.address,
         handle: identity.handle,
         displayName: identity.displayName,
         bio: identity.bio,
-        avatarDataUrl,
         source: 'nimconnect',
-      }
+      })
     } catch {
-      this.cachedProfile = {
+      this.cachedProfile = await withIdenticon({
         ...MOCK_PROFILE,
         address,
         source: 'mock',
-      }
+      })
     }
   }
 
@@ -106,5 +97,13 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
 
   async refresh(): Promise<void> {
     await this.initialize()
+  }
+}
+
+async function withIdenticon(profile: PublicProfile): Promise<PublicProfile> {
+  try {
+    return { ...profile, avatarDataUrl: await identiconDataUrl(profile.address) }
+  } catch {
+    return profile
   }
 }

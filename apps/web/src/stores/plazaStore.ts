@@ -3,6 +3,8 @@ import { ref } from 'vue'
 import type { AppAdapters } from '@/adapters/createAdapters'
 import type { PlazaActor } from '@/adapters/presence/PresenceAdapter'
 import { NIMWORLD_TIP_ADDRESS, nimToLuna } from '@/adapters/payment/paymentConfig'
+import { fetchLiveBalanceNim } from '@/adapters/payment/balanceApi'
+import { getResolvedAddress } from '@/auth/session'
 import { loadPlazaPosition, savePlazaPosition } from '@/adapters/launcher/AppLauncher'
 import type { ArenaStatus, CatalogApp, InteractionTarget, PublicProfile, WorldPosition } from '@/domain/types'
 import { nimbomberManifest, playnimiqManifest } from '@nimworld/app-manifest'
@@ -33,6 +35,8 @@ export const usePlazaStore = defineStore('plaza', () => {
   const nearbyActors = ref<PlazaActor[]>([])
   const paymentSheet = ref<PaymentSheetState | null>(null)
   const paymentBusy = ref(false)
+  const balanceNim = ref<number | null>(null)
+  const balanceIsPreview = ref(true)
 
   let adapters: AppAdapters | null = null
 
@@ -61,6 +65,7 @@ export const usePlazaStore = defineStore('plaza', () => {
       profile.value = await adapters.nimconnect.getCurrentProfile()
       featuredApps.value = await adapters.catalog.getFeaturedApps()
       nearbyActors.value = await adapters.presence.getActors()
+      await refreshBalance()
       const games = await adapters.catalog.getApps()
       const fromCatalog = games.filter((a) =>
         ['nimbomber', 'playnimiq'].includes(a.slug) || a.category.toLowerCase().includes('game'),
@@ -214,6 +219,22 @@ export const usePlazaStore = defineStore('plaza', () => {
     }
   }
 
+  async function refreshBalance() {
+    if (!adapters) return
+    const address = profile.value?.address ?? getResolvedAddress()
+    if (address) {
+      const live = await fetchLiveBalanceNim(address)
+      if (live !== null) {
+        balanceNim.value = live
+        balanceIsPreview.value = false
+        return
+      }
+    }
+    // No session address or RPC unreachable: adapter returns the mock preview amount.
+    balanceNim.value = await adapters.payment.getBalanceNim()
+    balanceIsPreview.value = true
+  }
+
   async function openNimConnectProfile(handle?: string) {
     if (!adapters) return
     await adapters.nimconnect.openProfile(handle)
@@ -246,6 +267,8 @@ export const usePlazaStore = defineStore('plaza', () => {
     nearbyActors,
     paymentSheet,
     paymentBusy,
+    balanceNim,
+    balanceIsPreview,
     setAdapters,
     bootstrap,
     setInteraction,
@@ -257,6 +280,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     openPaymentSheet,
     closePaymentSheet,
     submitPayment,
+    refreshBalance,
     openNimConnectProfile,
     loadFountainExtras,
   }

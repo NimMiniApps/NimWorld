@@ -5,6 +5,8 @@ COPY package.json package-lock.json ./
 COPY packages ./packages
 COPY apps/web ./apps/web
 RUN npm ci
+ARG NIMWORLD_BUILD_ID
+ENV NIMWORLD_BUILD_ID=$NIMWORLD_BUILD_ID
 RUN npm run build
 
 FROM nginx:alpine

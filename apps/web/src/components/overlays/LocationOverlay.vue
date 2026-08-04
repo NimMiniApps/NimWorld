@@ -38,7 +38,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div v-if="store.openLocationId" class="backdrop" @click.self="store.closeLocation()">
+  <div v-if="store.openLocationId" class="backdrop">
     <section class="nw-panel sheet" role="dialog" :aria-label="title">
       <header>
         <div>
@@ -65,16 +65,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   position: absolute;
   inset: 0;
   z-index: 40;
-  background: rgba(5, 8, 20, 0.55);
+  background: rgba(5, 8, 20, 0.45);
+  /* Panel is non-modal: joystick and canvas stay reachable while it is open. */
+  pointer-events: none;
   display: grid;
-  place-items: end center;
+  /* Top-anchored so the joystick and bottom nav stay clear while walking. */
+  place-items: start center;
   padding: 0.75rem;
-  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  padding-top: calc(3.5rem + env(safe-area-inset-top));
 }
 
 .sheet {
-  width: min(560px, 100%);
-  max-height: min(78vh, 720px);
+  pointer-events: auto;
+  width: min(760px, 100%);
+  max-height: min(62vh, 720px);
   overflow: auto;
   padding: 1rem 1.1rem 1.2rem;
   animation: sheet-in 280ms ease both;

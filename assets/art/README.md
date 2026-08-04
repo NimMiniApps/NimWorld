@@ -52,7 +52,10 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | C Props | 8 | 6 | tree/bush/crates/bench/lantern + door candidate |
 | Path tiles (maps) | — | ~20–40 | `path_stone_v01` deprecated (edge QA fail) |
 | Plaza Wang tiles | — | 4 gens | `plaza_stone_wang_v01` approved (attempt 1 + palette remap) |
+| C2 water + path tiles | ~10 | 2 gens | both approved on attempt 1 (chained off the grass base tile + palette remap) |
+| C3 foliage + border wall | ~20 | 17 gens | 12 in use; 3 style rejects; wall kit (2) cut on review — a straight-on sprite cannot follow a curved bank |
 | D Characters | 5 | 5 | Player/Guide/Builder/TM/Courier + walk 4-dir |
+| D2 Gardener + walk repair | 1 | 12 | gardener v01 rejected (off-style), v02 approved; player/courier south walk regenerated (v3) |
 | Reserve | 2 | | |
 | **Total** | was 40 trial | ~60+ | Tier 1: 2000 gens |
 
@@ -77,12 +80,29 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | `landmarks/arcade_v03_final.png` | `building-arcade` | final | B |
 | `landmarks/arcade_v01_final.png` | — | superseded | B |
 | `rejected/arcade_v02_checkerboard_rejected.png` | — | rejected | B (baked checkerboard, 0% alpha) |
-| `props/tree_v01_final.png` | `prop-tree` | final | C |
+| `props/tree_v01_final.png` | — | superseded | C (pale mint canopy outside the `#002010`–`#104010` vegetation range; replaced by `oak_v01`) |
 | `props/bush_v01_final.png` | `prop-bush` | final | C |
 | `props/crates_v01_final.png` | `prop-crates` | final | C |
 | `props/bench_v01_final.png` | `prop-bench` | final | C |
 | `props/lantern_v01_final.png` | `prop-lantern` | final | C |
 | `props/door_v01_candidate.png` | — | candidate | C |
+| `props/conifer_v02_final.png` | `prop-conifer` | final | C3 |
+| `props/broadleaf_v02_final.png` | `prop-broadleaf` | final | C3 |
+| `props/blossom_tree_v01_final.png` | `prop-blossom` | final | C3 |
+| `props/shrub_v01_final.png` | `prop-shrub` | final | C3 |
+| `props/fern_v01_final.png` | `prop-fern` | final | C3 |
+| `props/boulder_v01_final.png` | `prop-boulder` | final | C3 |
+| `props/flowerbed_v03_final.png` | `prop-flowerbed` | final | C3 |
+| `props/hedge_v01_final.png` | `prop-hedge` | final | C3 |
+| `props/oak_v01_final.png` | `prop-oak` | final | C3 |
+| `props/poplar_v01_final.png` | `prop-poplar` | final | C3 |
+| `props/willow_v01_final.png` | `prop-willow` | final | C3 |
+| `rejected/border_wall_v01/wall_straight_v01_final.png` | — | rejected | C3 (straight-on sprite cannot follow a curved bank; needs an oriented kit — see REASON.md) |
+| `rejected/border_wall_v01/wall_pillar_v01_final.png` | — | rejected | C3 (same) |
+| `rejected/conifer_v01_blue_shadow_rejected.png` | — | rejected | C3 (pale blue contact shadow read as a puddle) |
+| `rejected/broadleaf_v01_blue_shadow_rejected.png` | — | rejected | C3 (same baked shadow) |
+| `rejected/flowerbed_v01_warm_rejected.png` | — | rejected | C3 (warm orange against a cool palette) |
+| `rejected/flowerbed_v02_sparse_rejected.png` | — | rejected | C3 (negative prompts left it near-empty) |
 | `landmarks/arena_v02_final.png` | `building-arena` | final | B |
 | `landmarks/townhall_v01_final.png` | `building-townhall` | final | B |
 | `landmarks/social_v01_final.png` | `building-social` | final | B |
@@ -91,12 +111,17 @@ Environment style **frozen** — see `docs/art/nimworld-art-bible.md`.
 | `effects/arcade_portal_cabinet_v01_candidate.png` | — | candidate | B |
 | `rejected/arena_v01_house_rejected.png` | — | rejected | B |
 | `concepts/characters_v04_citizen_refine.png` | — | concept | dir |
-| `characters/player_sheet_v01.png` | `char-player` | final | B |
 | `characters/guide_sheet_v01.png` | `char-npc-a` | final | B |
-| `characters/courier_sheet_v01.png` | `char-npc-c` | final | B |
 | `characters/tournament_master_sheet_v01.png` | `char-npc-d` | final | B |
 | `characters/builder_sheet_v01.png` | `char-npc-e` | final | B |
+| `characters/gardener_sheet_v02.png` | `char-npc-b` | final | D2 |
+| `characters/player_sheet_v02.png` | `char-player`, `char-ghost` | final | D2 (ghost reuses it faded + gold-tinted) |
+| `characters/courier_sheet_v02.png` | `char-npc-c` | final | D2 |
+| `rejected/characters/player_sheet_v01_backfacing_walk_rejected.png` | — | rejected | D2 (south walk frame 1 rendered as a rear view) |
+| `rejected/characters/courier_sheet_v01_backfacing_walk_rejected.png` | — | rejected | D2 (same defect) |
 | `tiles/plaza_stone_wang_v01/tileset.png` | `terrain-plaza-wang` (Task 6) | approved | terrain |
+| `tiles/canal_water_wang_v01/tileset.png` | `terrain-canal-water` | approved | C2 |
+| `tiles/path_warm_wang_v01/tileset.png` | `terrain-path-warm` | approved | C2 |
 | `tiles/path_stone_v01/*` | `path-auto-*` | deprecated | terrain |
 | `rejected/path_stone_v01/*` | — | rejected | terrain (transparent edges + `#1c1e25` borders) |
 

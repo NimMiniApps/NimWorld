@@ -61,7 +61,7 @@ export type TerrainCell = 0 | 1 | 2 | 3 | 4 | 5
 ```
 
 - **Water** produces the canal ring that encloses the plaza and reads as depth.
-- **Path** produces warm tan spokes against the cool grey hub stone. This two-tone ground is the single largest contributor to the mockup's perceived density — a uniform stone floor cannot read the same way regardless of how many props sit on it.
+- **Path** produces warm tan spokes against the cool grey hub stone. This two-tone ground is the single largest contributor to the mockup's perceived density — a uniform stone floor cannot read the same way regardless of how many props sit on it. **Withdrawn after C2 — see "the two-tone ground plan is withdrawn" below.**
 
 `isStoneFamily` keeps its current members (plaza, entrance, construction). Path is deliberately *not* in the stone family: it is a separate Wang layer with its own tileset, and mixing it into the stone mask would make the hub and spokes indistinguishable.
 
@@ -123,9 +123,9 @@ O  = circular stone hub, fountain at center
 
 - **Hub** — `stampDisk` at `PLAZA_CENTER`, radius ~5 cells, `TERRAIN_PLAZA`.
 - **Spokes** — six `stampCurve` calls with `bulge: 0` (straight), `TERRAIN_PATH`, hub edge to landmark landing pad.
-- **Landing pads** — `stampLandingPad` per landmark, sizes carried over from the current map (Arcade 5×3, Arena 4×3, Marketplace 2×2 construction, Social Club 3×2, Town Hall 3×3).
+- **Landing pads** — `stampLandingPad` per landmark, sizes carried over from the current map (Arcade 5×3, Arena 4×3, Marketplace 2×2 construction, Social Club 3×2, Town Hall 3×3). **Superseded — see "landing pads are derived from the sprite" below.**
 - **Canal** — `stampRing` of `TERRAIN_WATER` outside the landmark band, with a gap or bridge at each spoke crossing.
-- **Border** — wall band at the world edge, backed by collision, dense foliage inside it.
+- **Border** — wall band at the world edge, backed by collision, dense foliage inside it. **Superseded — the wall was cut in C3 and the foliage carries the border alone; see the C3 plan's Task 8.**
 
 Landmarks are repositioned onto the compass. `locations.ts` coordinate changes break assertions in `locations.test.ts` and `plazaTerrainMap.test.ts`; updating those is part of the work.
 
@@ -195,13 +195,93 @@ Each phase gets its own implementation plan.
 
 | Phase | Content | PixelLab spend |
 | --- | --- | --- |
-| **C1** | Terrain foundation — new cell types, resolver predicate, rewritten layout, run-merged terrain collision, QA generalization, tests green. Renders in placeholder colors. | none |
-| **C2** | Water and path tilesets generated, chained, and wired in. | ~10 |
-| **C3** | Foliage, border wall, bridges, density pass. | ~20 |
+| **C1** | Terrain foundation — new cell types, resolver predicate, rewritten layout, run-merged terrain collision, QA generalization, tests green. Renders in placeholder colors. — **done** | none |
+| **C2** | Water and path tilesets generated, chained, and wired in. — **done** (2 gens) | ~10 |
+| **C3** | Foliage and density pass. Bridges dropped — no avenue crosses the canal. Border wall attempted and cut on review; see the C3 plan's Task 8. — **done** (17 gens) | ~20 |
 | **C4** | Landmark scale-up and in-world signboards. | ~15 |
-| **C5** | Mobile HUD trim — NIM balance chip, bottom nav. | none |
+| **C5** | Mobile HUD trim — NIM balance chip, bottom nav. — **done** (extended with desktop-only preview shells; see `docs/plans/2026-08-04-plaza-hud-design.md`) | none |
 
 C1 lands with tests green and zero credits spent, so the new ground plan can be reviewed in placeholder colors before any art is commissioned.
+
+## Correction after C2 review
+
+The spokes shipped in C1 read as slabs rather than roads. Three causes, all in
+`plazaTerrainMap.ts`, all fixed before C3:
+
+1. `stampCurve` painted by stamping a brush along the line and rounding to a cell at
+   every step, so road edges alternated between full and narrow runs. Replaced by
+   `stampRoad`, which rasterizes by perpendicular distance and has clean edges at any
+   angle. The Bezier bulge and jitter went with it — every spoke was straight.
+2. The hub disk at radius 5 left only 2–3 cells between itself and each landing pad, so
+   no spoke was long enough to read as an avenue. Hub is now radius 4.
+3. The south approach ran from the center to `SPAWN_POINT`, which sits exactly
+   `HUB_RADIUS` away — the hub disk, stamped last, erased it entirely. It now runs past
+   the spawn toward the Harbor.
+
+A road renders one display tile wider than its cell count, since the Wang layer needs a
+transition tile on each side.
+
+## Correction: the two-tone ground plan is withdrawn
+
+The "warm tan spokes against the cool grey hub" above does not work, and no amount of
+palette tuning fixes it. Each terrain family is its own Wang layer, and every layer knows
+only one transition: to grass. Where the tan avenue met the stone hub, the stone layer
+painted its stone→grass edge tile on top of the road, leaving a grass channel and a second
+outline between them. Every avenue detached from the hub, and every landing pad detached
+from its avenue. Two paved materials cannot abut.
+
+Inlaying tan inside a shared stone silhouette — folding path into the stone mask and
+painting only the road's full-upper interior cells — was tested and rejected: a 3-cell road
+has almost no interior, so the tan broke into disconnected patches.
+
+The ground plan is therefore **one paved material**: hub, avenues and landing pads are all
+stone family, so the plaza is a single continuous silhouette with one outline against the
+grass. Density comes from C3 foliage and C4 landmarks instead.
+
+`path_warm_wang_v01` is not wasted. A grass↔path Wang set is exactly right for C3 garden
+trails through the foliage band, which only ever touch grass. The path layer stays wired in
+`PlazaScene` for that.
+
+Widths settled with the material: hub radius 6 — at 4 the six-way junction swallowed the
+disk and the plaza read as an asterisk — and avenues 2 cells, cardinal and diagonal alike.
+The earlier 3-cell cardinal / 2-cell diagonal split existed to stop diagonals reading as
+wedges; at 2 cells both, that problem does not arise. The south approach was lengthened to
+clear the wider hub.
+
+## Correction: landing pads are derived from the sprite, not authored
+
+The pad sizes listed above (Arcade 5×3, Arena 4×3, and so on) were carried over from the
+960×720 plaza, and the landmark art outgrew them. Every pad was narrower than the building
+standing on it — the Town Hall is 140px wide on a 96px pad — so each building hung off its
+own paving into the grass, and the pad's leftover half read as a stone platform parked
+beside the door.
+
+`landingPadRect` now derives the rect from `ART_DISPLAY_SIZE` and the sprite origin
+`PlazaScene` draws with: full sprite width in cells, from one row above the building's base
+to one row below it. Re-sizing a sprite re-sizes its pad. `plazaTerrainMap.test.ts` walks
+each sprite's own footprint and demands stone under it, so the two cannot drift apart again.
+
+## Correction: prop placement is derived, and no bridge was built
+
+C3 replaced the prop composition rather than re-authoring it. The old set was
+written for the 960×720 cross plaza and survived into the radial layout as a
+blanket 1.2× rescale, so props stood on paving and in the canal. `decorPlacement.ts`
+now scatters against the terrain grid from a fixed seed: a prop is placed only if
+its base cell is grass and it clears the landmarks, so re-tuning the hub or the
+canal re-scatters correctly instead of silently misplacing everything.
+
+Three things the scatter taught us. Canopy has to be placed before ground cover,
+because rejection sampling quietly favours whatever is smallest — mixed in one
+pass, ferns spent the attempt budget and barely a tree stood. Thicket seeds have
+to take their textures in turn rather than at random, or whole textures starve.
+And a minimum-spacing scatter alone produces blue noise — props evenly spread and
+never grouped — which is precisely what reads as the same few sprites pasted
+across the map. The regularity is the tell, not the sprite count, so foliage is
+seeded as thickets with clearings between them.
+
+The bridge in the batch table was never generated: the passability section above
+had already moved the canal outside the landmark band, so no avenue crosses the
+water and a bridge would span nothing.
 
 ## Relationship to the product roadmap
 

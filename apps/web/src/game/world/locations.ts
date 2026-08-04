@@ -26,10 +26,10 @@ export interface FutureLandmark {
   collideH: number
 }
 
-/** Compact world bounds — physics / scroll limits. */
+/** Compact world bounds — physics / scroll limits. Matches the 36×27 terrain grid. */
 export const WORLD = {
-  width: 960,
-  height: 720,
+  width: 1152,
+  height: 864,
   padding: 24,
 }
 
@@ -39,11 +39,11 @@ export const WORLD = {
  * Sized so the player never sees the entire world at once.
  */
 export const VIEW_FRAME = {
-  width: 720,
-  height: 560,
+  width: 780,
+  height: 600,
 }
 
-export const PLAZA_CENTER = { x: 480, y: 360 }
+export const PLAZA_CENTER = { x: 576, y: 432 }
 
 /**
  * Organic composition: Arcade as largest rear landmark, Arena left,
@@ -67,8 +67,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'arcade',
     label: 'Arcade',
     interactionLabel: 'Open Arcade',
-    x: 478,
-    y: 168,
+    x: 576,
+    y: 150,
     radius: 52,
     collideW: 130,
     collideH: 78,
@@ -81,7 +81,7 @@ export const LOCATIONS: PlazaLocation[] = [
     label: 'Arena',
     interactionLabel: 'Enter Arena',
     x: 210,
-    y: 255,
+    y: 400,
     radius: 46,
     collideW: 96,
     collideH: 68,
@@ -93,8 +93,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'marketplace',
     label: 'Marketplace',
     interactionLabel: 'View Construction',
-    x: 760,
-    y: 255,
+    x: 942,
+    y: 400,
     radius: 42,
     collideW: 96,
     collideH: 58,
@@ -106,8 +106,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'social-club',
     label: 'Social Club',
     interactionLabel: 'Enter Social Club',
-    x: 240,
-    y: 530,
+    x: 300,
+    y: 660,
     radius: 42,
     collideW: 88,
     collideH: 58,
@@ -119,8 +119,8 @@ export const LOCATIONS: PlazaLocation[] = [
     id: 'town-hall',
     label: 'Town Hall',
     interactionLabel: 'Enter Town Hall',
-    x: 730,
-    y: 535,
+    x: 852,
+    y: 660,
     radius: 42,
     collideW: 90,
     collideH: 60,
@@ -130,7 +130,7 @@ export const LOCATIONS: PlazaLocation[] = [
   },
 ]
 
-export const SPAWN_POINT = { x: PLAZA_CENTER.x, y: PLAZA_CENTER.y + 78 }
+export const SPAWN_POINT = { x: PLAZA_CENTER.x, y: PLAZA_CENTER.y + 160 }
 
 /**
  * Future world landmarks — rim teases with in-world story copy.
@@ -139,8 +139,8 @@ export const SPAWN_POINT = { x: PLAZA_CENTER.x, y: PLAZA_CENTER.y + 78 }
 export const FUTURE_LANDMARKS: FutureLandmark[] = [
   {
     id: 'harbor',
-    x: 480,
-    y: 678,
+    x: 576,
+    y: 814,
     texture: 'prop-harbor-closed',
     title: 'Harbor',
     lines: ['Closed for repairs', 'Expected reopening soon'],
@@ -149,8 +149,8 @@ export const FUTURE_LANDMARKS: FutureLandmark[] = [
   },
   {
     id: 'mountain',
-    x: 480,
-    y: 42,
+    x: 576,
+    y: 50,
     texture: 'prop-mountain-gate',
     title: 'Mountain Trail',
     lines: ['Unsafe', 'Access restricted'],
@@ -159,8 +159,8 @@ export const FUTURE_LANDMARKS: FutureLandmark[] = [
   },
   {
     id: 'tunnel',
-    x: 48,
-    y: 360,
+    x: 58,
+    y: 432,
     texture: 'prop-tunnel',
     title: 'Old Tunnel',
     lines: ['Sealed', 'District planned'],
@@ -169,68 +169,4 @@ export const FUTURE_LANDMARKS: FutureLandmark[] = [
   },
 ]
 
-/** Decorative prop placements (texture, x, y). */
-export const DECOR: Array<{ key: string; x: number; y: number; depthBias?: number }> = [
-  // perimeter trees
-  { key: 'prop-tree', x: 100, y: 150 },
-  { key: 'prop-tree', x: 860, y: 145 },
-  { key: 'prop-tree', x: 70, y: 420 },
-  { key: 'prop-tree', x: 900, y: 430 },
-  { key: 'prop-tree', x: 130, y: 620 },
-  { key: 'prop-tree', x: 840, y: 640 },
-  { key: 'prop-tree', x: 200, y: 380 },
-  { key: 'prop-tree', x: 760, y: 390 },
-
-  // vegetation breaks along paths
-  { key: 'prop-bush', x: 340, y: 190 },
-  { key: 'prop-bush', x: 620, y: 185 },
-  { key: 'prop-bush', x: 160, y: 360 },
-  { key: 'prop-bush', x: 800, y: 370 },
-  { key: 'prop-bush', x: 400, y: 600 },
-  { key: 'prop-bush', x: 560, y: 610 },
-  { key: 'prop-bush', x: 450, y: 280 },
-  { key: 'prop-bush', x: 510, y: 280 },
-  { key: 'prop-bush', x: 380, y: 420 },
-  { key: 'prop-bush', x: 580, y: 430 },
-  { key: 'prop-bush', x: 300, y: 480 },
-  { key: 'prop-bush', x: 660, y: 490 },
-
-  // seating / social
-  { key: 'prop-bench', x: 360, y: 310 },
-  { key: 'prop-bench', x: 600, y: 315 },
-  { key: 'prop-bench', x: 480, y: 470 },
-  { key: 'prop-picnic', x: 200, y: 560 },
-  { key: 'prop-bench', x: 290, y: 560 },
-
-  // lanterns (light pools)
-  { key: 'prop-lantern', x: 330, y: 270 },
-  { key: 'prop-lantern', x: 630, y: 265 },
-  { key: 'prop-lantern', x: 300, y: 430 },
-  { key: 'prop-lantern', x: 660, y: 440 },
-  { key: 'prop-lantern', x: 400, y: 540 },
-  { key: 'prop-lantern', x: 580, y: 545 },
-  { key: 'prop-lantern', x: 480, y: 240 },
-
-  // revisit-hook banners (physical world slots)
-  { key: 'prop-banner-red', x: 155, y: 195 },
-  { key: 'prop-banner-cyan', x: 400, y: 95 },
-  { key: 'prop-banner-purple', x: 300, y: 480 },
-  { key: 'prop-banner-green', x: 820, y: 200 },
-
-  // micro-landmarks
-  { key: 'prop-firepit', x: 145, y: 300 },
-  { key: 'prop-joystick', x: 560, y: 175 },
-  { key: 'prop-coffee', x: 175, y: 500 },
-  { key: 'prop-statue', x: 800, y: 500 },
-  { key: 'prop-crates', x: 820, y: 300 },
-  { key: 'prop-crates', x: 700, y: 290 },
-
-  // market district fences leading east
-  { key: 'prop-fence', x: 860, y: 260 },
-  { key: 'prop-fence', x: 890, y: 300 },
-  { key: 'prop-fence', x: 870, y: 340 },
-
-  // usable bridges (not harbor)
-  { key: 'prop-bridge', x: 100, y: 300 },
-  { key: 'prop-bridge', x: 860, y: 400 },
-]
+/** Prop placement is derived from the terrain — see `decorPlacement.ts`. */
