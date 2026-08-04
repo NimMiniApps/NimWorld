@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type Phaser from 'phaser'
-import { createAdapters } from '@/adapters/createAdapters'
+import { createAdapters, createPlazaPresenceAdapter } from '@/adapters/createAdapters'
+import { LocalPresenceAdapter } from '@/adapters/presence/PresenceAdapter'
 import { loadPlazaPosition } from '@/adapters/launcher/AppLauncher'
 import { createPlazaGame } from '@/game/createGame'
 import { worldBridge } from '@/game/bridge/WorldBridge'
@@ -16,6 +17,8 @@ const host = ref<HTMLElement | null>(null)
 const store = usePlazaStore()
 let game: Phaser.Game | null = null
 let offFirstMove: (() => void) | null = null
+let offPresence: (() => void) | null = null
+let offPeerMoved: (() => void) | null = null
 let pendingReturnAppId: string | null = null
 let spawnAtCreate: { x: number; y: number } | null = null
 
@@ -53,9 +56,11 @@ onMounted(async () => {
         break
       case 'PLAYER_MOVED':
         store.rememberPosition(event.position)
+        adapters.presence.publishPosition(event.position)
         break
       case 'PLAYER_READY':
         store.rememberPosition(event.position)
+        adapters.presence.publishPosition(event.position)
         if (pendingReturnAppId) {
           const appId = pendingReturnAppId
           pendingReturnAppId = null
@@ -73,16 +78,57 @@ onMounted(async () => {
     }
   })
 
-  const actors = await adapters.presence.getActors()
-  const label = store.profile?.handle ? `@${store.profile.handle}` : '@guest'
+  const label = store.profile?.handle ? `@${store.profile.handle}` : undefined
+  const playerLabel = label ?? '@guest'
   spawnAtCreate = store.lastPosition
 
+  // Boot Phaser first so UiCommand listeners exist, then connect presence.
+  // Presence snapshot used to arrive during BootScene preload and get dropped.
+  adapters.presence.dispose()
+  adapters.presence = createPlazaPresenceAdapter(label)
+
+  const plazaReady = new Promise<void>((resolve) => {
+    const off = worldBridge.onWorld((event) => {
+      if (event.type === 'PLAYER_READY') {
+        off()
+        resolve()
+      }
+    })
+  })
+
+  offPresence = adapters.presence.onActorsChanged((next) => {
+    store.nearbyActors = next
+    const online = next.filter((a) => a.kind === 'online')
+    worldBridge.emitUi({
+      type: 'SYNC_ONLINE_ACTORS',
+      actors: online.map((a) => ({
+        id: a.id,
+        label: a.label,
+        kind: 'online' as const,
+        statusLabel: a.statusLabel,
+        position: a.position,
+        color: a.color,
+        sheet: a.sheet,
+        address: a.address,
+      })),
+    })
+  })
+
+  offPeerMoved = adapters.presence.onPeerMoved((id, position) => {
+    worldBridge.emitUi({ type: 'PEER_MOVED', id, position })
+  })
+
+  const localOnly = await new LocalPresenceAdapter().getActors()
   game = createPlazaGame(host.value, {
     bridge: worldBridge,
-    actors,
+    actors: localOnly,
     spawn: spawnAtCreate,
-    playerLabel: label,
+    playerLabel,
   })
+
+  await plazaReady
+  await adapters.presence.initialize()
+  store.nearbyActors = await adapters.presence.getActors()
 
   const onFirst = () => emit('firstMove')
   game.events.on('plaza-first-move', onFirst)
@@ -98,6 +144,9 @@ watch(
 
 onBeforeUnmount(() => {
   offFirstMove?.()
+  offPresence?.()
+  offPeerMoved?.()
+  adapters.presence.dispose()
   game?.destroy(true)
   game = null
 })

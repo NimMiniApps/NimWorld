@@ -22,12 +22,30 @@ export function isPayableActor(actor: { address?: string }): boolean {
 export interface PresenceAdapter {
   initialize(): Promise<void>
   getActors(): Promise<PlazaActor[]>
+  publishPosition(position: WorldPosition): void
+  /** Roster changes (join / leave / snapshot). Not fired on every move. */
+  onActorsChanged(listener: (actors: PlazaActor[]) => void): () => void
+  /** Lightweight peer position updates for smooth avatar lerp. */
+  onPeerMoved(listener: (id: string, position: WorldPosition) => void): () => void
+  dispose(): void
 }
 
 export class LocalPresenceAdapter implements PresenceAdapter {
   async initialize(): Promise<void> {
-    // Presence WebSocket intentionally omitted.
+    // Local NPCs/ghosts only — no live peers.
   }
+
+  publishPosition(_position: WorldPosition): void {}
+
+  onActorsChanged(_listener: (actors: PlazaActor[]) => void): () => void {
+    return () => {}
+  }
+
+  onPeerMoved(_listener: (id: string, position: WorldPosition) => void): () => void {
+    return () => {}
+  }
+
+  dispose(): void {}
 
   async getActors(): Promise<PlazaActor[]> {
     return [

@@ -44,6 +44,7 @@ export interface PlazaSceneData {
 }
 
 type AmbientActor = {
+  id?: string
   character: CharacterSprite
   label: Phaser.GameObjects.Text
   kind: PlazaActor['kind']
@@ -53,6 +54,8 @@ type AmbientActor = {
   displayName: string
   waypoints?: WorldPosition[]
   glanceUntil: number
+  /** Live peer target; online actors lerp toward this each frame. */
+  target?: WorldPosition
 }
 
 export class PlazaScene extends Phaser.Scene {
@@ -568,41 +571,119 @@ export class PlazaScene extends Phaser.Scene {
     const fallbackSheets: CharSheet[] = ['char-npc-a', 'char-npc-b', 'char-npc-c']
 
     for (const actor of actors) {
-      const home = actor.position
-      const isGhost = actor.kind === 'ghost'
-      const sheet: CharSheet = isGhost
-        ? 'char-ghost'
-        : actor.sheet
-          ? sheetMap[actor.sheet]!
-          : fallbackSheets[npcIndex++ % fallbackSheets.length]!
+      if (actor.kind === 'online') {
+        this.upsertOnlineActor(actor)
+        continue
+      }
+      this.spawnAmbientActor(actor, sheetMap, fallbackSheets, npcIndex++)
+    }
+  }
 
-      const character = new CharacterSprite(this, home.x, home.y, sheet, isGhost)
-      const body = character.sprite.body as Phaser.Physics.Arcade.Body | null
-      if (body) body.enable = false
+  private spawnAmbientActor(
+    actor: PlazaActor,
+    sheetMap: Record<string, CharSheet>,
+    fallbackSheets: CharSheet[],
+    npcIndex: number,
+  ) {
+    const home = actor.position
+    const isGhost = actor.kind === 'ghost'
+    const sheet: CharSheet = isGhost
+      ? 'char-ghost'
+      : actor.sheet
+        ? sheetMap[actor.sheet]!
+        : fallbackSheets[npcIndex % fallbackSheets.length]!
 
-      const label = this.add
-        .text(home.x, home.y - 40, actor.label, {
-          fontFamily: 'Mulish, sans-serif',
-          fontSize: '10px',
-          color: isGhost ? '#ffe29a' : '#d7deff',
-          stroke: '#0c1020',
-          strokeThickness: 3,
-        })
-        .setOrigin(0.5)
-        .setDepth(10000)
-        .setAlpha(0)
+    const character = new CharacterSprite(this, home.x, home.y, sheet, isGhost)
+    const body = character.sprite.body as Phaser.Physics.Arcade.Body | null
+    if (body) body.enable = false
 
-      this.ambientActors.push({
-        character,
-        label,
-        kind: actor.kind,
-        statusLabel: actor.statusLabel,
-        home,
-        phase: Math.random() * Math.PI * 2,
-        displayName: actor.label,
-        waypoints: actor.waypoints,
-        glanceUntil: 0,
+    const label = this.add
+      .text(home.x, home.y - 40, actor.label, {
+        fontFamily: 'Mulish, sans-serif',
+        fontSize: '10px',
+        color: isGhost ? '#ffe29a' : '#d7deff',
+        stroke: '#0c1020',
+        strokeThickness: 3,
       })
+      .setOrigin(0.5)
+      .setDepth(10000)
+      .setAlpha(0)
+
+    this.ambientActors.push({
+      id: actor.id,
+      character,
+      label,
+      kind: actor.kind,
+      statusLabel: actor.statusLabel,
+      home,
+      phase: Math.random() * Math.PI * 2,
+      displayName: actor.label,
+      waypoints: actor.waypoints,
+      glanceUntil: 0,
+    })
+  }
+
+  private upsertOnlineActor(actor: PlazaActor) {
+    const existing = this.ambientActors.find((a) => a.id === actor.id && a.kind === 'online')
+    if (existing) {
+      existing.target = { ...actor.position }
+      existing.home = { ...actor.position }
+      existing.displayName = actor.label
+      existing.statusLabel = actor.statusLabel
+      existing.label.setText(actor.label)
+      return
+    }
+
+    const sheetMap: Record<string, CharSheet> = {
+      a: 'char-npc-a',
+      b: 'char-npc-b',
+      c: 'char-npc-c',
+      d: 'char-npc-d',
+      e: 'char-npc-e',
+    }
+    const sheet: CharSheet = actor.sheet ? sheetMap[actor.sheet]! : 'char-npc-a'
+    const character = new CharacterSprite(this, actor.position.x, actor.position.y, sheet, false)
+    const body = character.sprite.body as Phaser.Physics.Arcade.Body | null
+    if (body) body.enable = false
+
+    const label = this.add
+      .text(actor.position.x, actor.position.y - 40, actor.label, {
+        fontFamily: 'Mulish, sans-serif',
+        fontSize: '10px',
+        color: '#9ef0ff',
+        stroke: '#0c1020',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(10000)
+      .setAlpha(0)
+
+    this.ambientActors.push({
+      id: actor.id,
+      character,
+      label,
+      kind: 'online',
+      statusLabel: actor.statusLabel,
+      home: { ...actor.position },
+      target: { ...actor.position },
+      phase: 0,
+      displayName: actor.label,
+      glanceUntil: 0,
+    })
+  }
+
+  private syncOnlineActors(actors: PlazaActor[]) {
+    const onlineIds = new Set(actors.map((a) => a.id))
+    for (const actor of actors) {
+      if (actor.kind === 'online') this.upsertOnlineActor(actor)
+    }
+    for (let i = this.ambientActors.length - 1; i >= 0; i--) {
+      const ambient = this.ambientActors[i]!
+      if (ambient.kind !== 'online') continue
+      if (ambient.id && onlineIds.has(ambient.id)) continue
+      ambient.character.sprite.destroy()
+      ambient.label.destroy()
+      this.ambientActors.splice(i, 1)
     }
   }
 
@@ -664,6 +745,29 @@ export class PlazaScene extends Phaser.Scene {
       case 'TRIGGER_INTERACT':
         this.tryInteract()
         break
+      case 'SYNC_ONLINE_ACTORS':
+        this.syncOnlineActors(command.actors)
+        break
+      case 'PEER_MOVED': {
+        const peer = this.ambientActors.find((a) => a.id === command.id && a.kind === 'online')
+        if (peer) {
+          peer.target = { ...command.position }
+          peer.home = { ...command.position }
+        } else {
+          // Peer moved before roster SYNC landed — spawn from the move packet.
+          this.upsertOnlineActor({
+            id: command.id,
+            label: command.id.length > 12 ? `${command.id.slice(0, 8)}…` : command.id,
+            kind: 'online',
+            statusLabel: 'Online',
+            position: command.position,
+            color: 0x58c4ff,
+            sheet: 'a',
+            address: command.id,
+          })
+        }
+        break
+      }
     }
   }
 
@@ -703,7 +807,7 @@ export class PlazaScene extends Phaser.Scene {
     this.playerLabelText.setDepth(10000)
 
     this.updateProximity()
-    this.updateAmbient()
+    this.updateAmbient(_delta)
     this.updateLabels()
   }
 
@@ -766,13 +870,33 @@ export class PlazaScene extends Phaser.Scene {
     }
   }
 
-  private updateAmbient() {
+  private updateAmbient(deltaMs = 16.67) {
     const t = this.time.now / 1000
     const now = this.time.now
+    // Slightly faster than local player (155) so remotes catch up between packets.
+    const remoteSpeed = 175
+    const maxStep = remoteSpeed * (deltaMs / 1000)
 
     for (const actor of this.ambientActors) {
       const prevX = actor.character.x
       const prevY = actor.character.y
+
+      if (actor.kind === 'online' && actor.target) {
+        const dx = actor.target.x - prevX
+        const dy = actor.target.y - prevY
+        const dist = Math.hypot(dx, dy)
+        if (dist <= 0.5) {
+          actor.character.ambientStep(prevX, prevY, prevX, prevY)
+        } else if (dist <= maxStep) {
+          actor.character.ambientStep(actor.target.x, actor.target.y, prevX, prevY)
+        } else {
+          const x = prevX + (dx / dist) * maxStep
+          const y = prevY + (dy / dist) * maxStep
+          actor.character.ambientStep(x, y, prevX, prevY)
+        }
+        actor.character.updateDepth(100)
+        continue
+      }
 
       // Glance at player when nearby
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, prevX, prevY)

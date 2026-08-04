@@ -24,6 +24,7 @@ export default defineConfig({
       '/auth-api': {
         target: authApiTarget,
         changeOrigin: true,
+        ws: true,
         rewrite: (path) => path.replace(/^\/auth-api/, ''),
       },
     },
