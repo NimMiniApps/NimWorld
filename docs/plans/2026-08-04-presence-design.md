@@ -1,6 +1,6 @@
 # Real-time Presence Design
 
-Date: 2026-08-04  
+Date: 2026-08-04
 Status: approved
 
 ## Goal

@@ -1,7 +1,7 @@
 # Plaza HUD (C5 + Preview Shells) — Design
 
-**Date:** 2026-08-04  
-**Status:** Approved  
+**Date:** 2026-08-04
+**Status:** Approved
 **Related:** Art Pass C phase C5 (`docs/plans/2026-08-03-art-pass-c-design.md`); mockup reference (nine-panel HUD rejected as product surface; reused as visual target for style + optional desktop preview chrome)
 
 ## Goal

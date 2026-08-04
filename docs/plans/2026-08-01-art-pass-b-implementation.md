@@ -274,17 +274,17 @@ git commit -m "docs: Art Pass B screenshots and asset manifest"
 
 ### Task 8: Verification
 
-**Step 1:** `npm run test -w @nimworld/web` — green  
-**Step 2:** `npm run build -w @nimworld/web` — green  
+**Step 1:** `npm run test -w @nimworld/web` — green
+**Step 2:** `npm run build -w @nimworld/web` — green
 **Step 3:** Manual checklist:
 
-- [ ] Fountain recognizable alone  
-- [ ] Arcade portal recognizable alone  
-- [ ] Landmarks readable without labels  
-- [ ] Characters read as one family  
-- [ ] Ground still procedural (intentional)  
-- [ ] No PixelLab UI assets  
-- [ ] Rejected folder preserved  
+- [ ] Fountain recognizable alone
+- [ ] Arcade portal recognizable alone
+- [ ] Landmarks readable without labels
+- [ ] Characters read as one family
+- [ ] Ground still procedural (intentional)
+- [ ] No PixelLab UI assets
+- [ ] Rejected folder preserved
 - [ ] Gen spend ≤ 40 (log actuals in `assets/art/README.md`)
 
 ---
