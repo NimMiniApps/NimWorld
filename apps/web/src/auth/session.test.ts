@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const listAccountsMock = vi.fn()
 const initMock = vi.fn()
-vi.mock('@nimiq/mini-app-sdk', () => ({ init: initMock }))
+vi.mock('@nimiq/mini-app-sdk', () => ({
+  init: (...args: unknown[]) => initMock(...args),
+}))
 
 const signMessageMock = vi.fn()
 vi.mock('@nimiq/hub-api', () => ({
@@ -10,8 +13,12 @@ vi.mock('@nimiq/hub-api', () => ({
 
 describe('resolveSession', () => {
   beforeEach(() => {
-    vi.stubGlobal('window', { setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms), btoa: (s: string) => Buffer.from(s, 'binary').toString('base64') })
+    vi.stubGlobal('window', {
+      setTimeout: (fn: () => void, ms: number) => setTimeout(fn, ms),
+      btoa: (s: string) => Buffer.from(s, 'binary').toString('base64'),
+    })
     initMock.mockReset()
+    listAccountsMock.mockReset()
     vi.resetModules()
   })
 
@@ -20,14 +27,37 @@ describe('resolveSession', () => {
     vi.restoreAllMocks()
   })
 
-  it('reports embedded when mini-app-sdk initializes', async () => {
-    initMock.mockResolvedValue({})
-    const { resolveSession } = await import('./session')
-    await expect(resolveSession()).resolves.toEqual({ mode: 'embedded' })
+  it('reports embedded with address when Pay SDK shares an account', async () => {
+    listAccountsMock.mockResolvedValue(['NQ07 PAY ADDR'])
+    initMock.mockResolvedValue({ listAccounts: listAccountsMock })
+    vi.stubGlobal('window', {
+      ...window,
+      nimiqPay: { language: 'en' },
+    })
+
+    const { resolveSession, getResolvedAddress } = await import('./session')
+    await expect(resolveSession()).resolves.toEqual({
+      mode: 'embedded',
+      address: 'NQ07 PAY ADDR',
+    })
+    expect(getResolvedAddress()).toBe('NQ07 PAY ADDR')
+    expect(initMock).toHaveBeenCalledWith({ timeout: 10_000 })
   })
 
-  it('reports anonymous when not embedded and no session cookie', async () => {
+  it('falls through to anonymous when SDK init fails outside Pay', async () => {
     initMock.mockRejectedValue(new Error('no host'))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    const { resolveSession } = await import('./session')
+    await expect(resolveSession()).resolves.toEqual({ mode: 'anonymous' })
+  })
+
+  it('falls through to anonymous when Pay shares no accounts', async () => {
+    listAccountsMock.mockResolvedValue([])
+    initMock.mockResolvedValue({ listAccounts: listAccountsMock })
+    vi.stubGlobal('window', {
+      ...window,
+      nimiqPay: {},
+    })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
     const { resolveSession } = await import('./session')
     await expect(resolveSession()).resolves.toEqual({ mode: 'anonymous' })
@@ -37,7 +67,10 @@ describe('resolveSession', () => {
     initMock.mockRejectedValue(new Error('no host'))
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ address: 'NQ07 0000 0000 0000 0000 0000 0000 0000 0000' }) }),
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ address: 'NQ07 0000 0000 0000 0000 0000 0000 0000 0000' }),
+      }),
     )
     const { resolveSession, getResolvedAddress } = await import('./session')
     await expect(resolveSession()).resolves.toEqual({
@@ -50,8 +83,11 @@ describe('resolveSession', () => {
 
 describe('loginWithHub', () => {
   beforeEach(() => {
-    vi.stubGlobal('window', { btoa: (s: string) => Buffer.from(s, 'binary').toString('base64') })
+    vi.stubGlobal('window', {
+      btoa: (s: string) => Buffer.from(s, 'binary').toString('base64'),
+    })
     signMessageMock.mockReset()
+    initMock.mockRejectedValue(new Error('no host'))
     vi.resetModules()
   })
 
@@ -90,5 +126,23 @@ describe('loginWithHub', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
     const { loginWithHub } = await import('./session')
     await expect(loginWithHub()).rejects.toThrow('Could not start login')
+  })
+
+  it('refuses Hub login inside Nimiq Pay', async () => {
+    vi.stubGlobal('window', {
+      btoa: (s: string) => Buffer.from(s, 'binary').toString('base64'),
+      nimiqPay: {},
+    })
+    const { loginWithHub } = await import('./session')
+    await expect(loginWithHub()).rejects.toThrow(/not available inside Nimiq Pay/)
+  })
+})
+
+describe('isNimiqPayHost', () => {
+  it('detects Pay host from window.nimiqPay', async () => {
+    const { isNimiqPayHost } = await import('./session')
+    expect(isNimiqPayHost({ nimiqPay: { language: 'en' } })).toBe(true)
+    expect(isNimiqPayHost({})).toBe(false)
+    expect(isNimiqPayHost(undefined)).toBe(false)
   })
 })

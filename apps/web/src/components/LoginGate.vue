@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import BootScreen from '@/components/BootScreen.vue'
-import { loginWithHub } from '@/auth/session'
+import { isNimiqPayHost, loginWithHub, resolveSession } from '@/auth/session'
 
 const emit = defineEmits<{ (e: 'authenticated', address: string): void }>()
 
+const inPay = isNimiqPayHost()
 const connecting = ref(false)
 const error = ref<string | null>(null)
 
@@ -20,16 +21,54 @@ async function connect() {
     connecting.value = false
   }
 }
+
+async function retryPay() {
+  connecting.value = true
+  error.value = null
+  try {
+    const session = await resolveSession()
+    if (session.mode === 'embedded' || session.mode === 'authenticated') {
+      emit('authenticated', session.address)
+      return
+    }
+    error.value =
+      'No wallet account is shared yet. Open NimWorld from Nimiq Pay with an unlocked wallet, then retry.'
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Could not reach Nimiq Pay'
+  } finally {
+    connecting.value = false
+  }
+}
 </script>
 
 <template>
   <BootScreen
-    :status="connecting ? 'Opening Nimiq Hub…' : 'Connect your Nimiq account to enter'"
+    :status="
+      connecting
+        ? inPay
+          ? 'Checking Nimiq Pay wallet…'
+          : 'Opening Nimiq Hub…'
+        : inPay
+          ? 'Open NimWorld from your Nimiq Pay wallet to continue'
+          : 'Connect your Nimiq account to enter'
+    "
     :busy="connecting"
   >
-    <button class="connect" type="button" :disabled="connecting" @click="connect">
+    <button
+      v-if="inPay"
+      class="connect"
+      type="button"
+      :disabled="connecting"
+      @click="retryPay"
+    >
+      {{ connecting ? 'Checking…' : 'Retry wallet share' }}
+    </button>
+    <button v-else class="connect" type="button" :disabled="connecting" @click="connect">
       {{ connecting ? 'Connecting…' : 'Connect with Nimiq Hub' }}
     </button>
+    <p v-if="inPay && !error" class="hint">
+      Hub popups are not available inside Nimiq Pay. Share a wallet account, then retry.
+    </p>
     <p v-if="error" class="error">{{ error }}</p>
   </BootScreen>
 </template>
@@ -59,6 +98,14 @@ async function connect() {
 .connect:disabled {
   opacity: 0.7;
   cursor: default;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  color: rgba(232, 240, 255, 0.72);
+  font-size: 0.85rem;
+  max-width: 22rem;
+  line-height: 1.4;
 }
 
 .error {

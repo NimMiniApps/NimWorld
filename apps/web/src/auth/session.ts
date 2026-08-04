@@ -1,5 +1,5 @@
 // Resolves how NimWorld should identify the current user:
-//   - embedded in Nimiq Pay -> @nimiq/mini-app-sdk already provides identity
+//   - embedded in Nimiq Pay -> @nimiq/mini-app-sdk listAccounts
 //   - standalone browser -> Nimiq Hub login, verified by apps/api, gates the plaza
 const AUTH_API_BASE = '/auth-api'
 
@@ -7,8 +7,13 @@ const AUTH_API_BASE = '/auth-api'
 // production Hub unless explicitly overridden.
 const HUB_URL = import.meta.env.VITE_NIMIQ_HUB_URL?.trim() || 'https://hub.nimiq.com'
 
+/** Outside Pay: fail fast so desktop can use Hub. */
+const SDK_TIMEOUT_DESKTOP_MS = 2_500
+/** Inside Pay: provider can inject after the WebView starts. */
+const SDK_TIMEOUT_PAY_MS = 10_000
+
 export type SessionState =
-  | { mode: 'embedded' }
+  | { mode: 'embedded'; address: string }
   | { mode: 'authenticated'; address: string }
   | { mode: 'anonymous' }
 
@@ -19,16 +24,34 @@ export function getResolvedAddress(): string | null {
   return resolvedAddress
 }
 
-async function tryEmbeddedInit(timeoutMs = 1500): Promise<boolean> {
+/** True when running inside the Nimiq Pay mini-app host. */
+export function isNimiqPayHost(
+  win: { nimiqPay?: unknown } | undefined = typeof window !== 'undefined' ? window : undefined,
+): boolean {
+  return Boolean(win?.nimiqPay)
+}
+
+function providerError(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || !('error' in value)) return null
+  const err = (value as { error?: { message?: string } }).error
+  return err?.message || 'Nimiq Pay provider request failed.'
+}
+
+async function tryEmbeddedSession(): Promise<{ address: string } | null> {
+  const inPay = isNimiqPayHost()
+  const timeoutMs = inPay ? SDK_TIMEOUT_PAY_MS : SDK_TIMEOUT_DESKTOP_MS
   try {
     const { init } = await import('@nimiq/mini-app-sdk')
-    const timeout = new Promise<never>((_, reject) =>
-      window.setTimeout(() => reject(new Error('mini-app-sdk init timed out')), timeoutMs),
-    )
-    await Promise.race([init(), timeout])
-    return true
+    const nimiq = await init({ timeout: timeoutMs })
+    const result = await nimiq.listAccounts()
+    const error = providerError(result)
+    if (error) return null
+    if (!Array.isArray(result) || result.length === 0) return null
+    const address = String(result[0] ?? '').trim()
+    if (!address) return null
+    return { address }
   } catch {
-    return false
+    return null
   }
 }
 
@@ -44,8 +67,10 @@ async function fetchExistingAddress(): Promise<string | null> {
 }
 
 export async function resolveSession(): Promise<SessionState> {
-  if (await tryEmbeddedInit()) {
-    return { mode: 'embedded' }
+  const embedded = await tryEmbeddedSession()
+  if (embedded) {
+    resolvedAddress = embedded.address
+    return { mode: 'embedded', address: embedded.address }
   }
   const address = await fetchExistingAddress()
   if (address) {
@@ -63,6 +88,10 @@ function uint8ToBase64(bytes: Uint8Array): string {
 
 /** Opens the Nimiq Hub sign-in popup, verifies the signature with apps/api, and returns the address. */
 export async function loginWithHub(): Promise<string> {
+  if (isNimiqPayHost()) {
+    throw new Error('Nimiq Hub login is not available inside Nimiq Pay. Use the wallet account share instead.')
+  }
+
   const challengeRes = await fetch(`${AUTH_API_BASE}/auth/challenge`, { method: 'POST' })
   if (!challengeRes.ok) throw new Error('Could not start login')
   const { nonce, token } = (await challengeRes.json()) as { nonce: string; token: string }
