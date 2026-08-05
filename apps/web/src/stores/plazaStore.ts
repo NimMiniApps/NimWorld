@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { AppAdapters } from '@/adapters/createAdapters'
 import type { CatalogSource } from '@/adapters/catalog/MiniAppCatalogAdapter'
 import { fetchWorldConfig, FALLBACK_WORLD_CONFIG, type WorldConfig } from '@/adapters/world/worldConfig'
+import { fetchActivityFeed, type ActivityEntry } from '@/adapters/events/activityFeed'
 import type { PlazaActor } from '@/adapters/presence/PresenceAdapter'
 import { nimToLuna } from '@/adapters/payment/paymentConfig'
 import { fetchLiveBalanceNim } from '@/adapters/payment/balanceApi'
@@ -70,6 +71,8 @@ export const usePlazaStore = defineStore('plaza', () => {
   const profileSheet = ref<ProfileSheetState | null>(null)
   const launchHistory = ref<LaunchHistoryEntry[]>([])
   const worldConfig = ref<WorldConfig>(FALLBACK_WORLD_CONFIG)
+  /** Cross-app activity, signed by the apps that reported it. */
+  const activityFeed = ref<ActivityEntry[]>([])
 
   let adapters: AppAdapters | null = null
 
@@ -100,6 +103,7 @@ export const usePlazaStore = defineStore('plaza', () => {
       nearbyActors.value = await adapters.presence.getActors()
       launchHistory.value = adapters.launcher.getHistory()
       worldConfig.value = await fetchWorldConfig()
+      activityFeed.value = await fetchActivityFeed()
       await loadFriends()
       await autoConnectFriends()
       await refreshBalance()
@@ -149,6 +153,8 @@ export const usePlazaStore = defineStore('plaza', () => {
     if (locationId === 'arena' && adapters) {
       arenaStatus.value = await adapters.arena.getStatus('nimbomber')
     }
+    // Fresh on open — a feed is only interesting if it is current.
+    if (locationId === 'town-hall') activityFeed.value = await fetchActivityFeed()
   }
 
   function closeLocation() {
@@ -387,6 +393,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     profileSheet,
     launchHistory,
     worldConfig,
+    activityFeed,
     setAdapters,
     bootstrap,
     setInteraction,

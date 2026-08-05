@@ -35,6 +35,7 @@ Vue HUD / overlays  <── WorldBridge ──>  Phaser plaza
 | Presence WebSocket | `apps/api` `/presence` (cookie session, origin-checked); client merges live peers + local NPCs/ghosts; falls back when WS unavailable |
 | Recently active | Hub keeps departed players 30 min in memory; snapshot `recent[]` + `peer_leave` turn them into ghosts labelled `Active Nm ago` / `Playing X` |
 | Signed app events | `apps/api` `POST /events`, HMAC-SHA256 over the raw body with a per-app secret from `APP_KEYS=<id>:<secret>,…`; `GET /events` returns only the session's own events. The browser holds no secret, so there is no client-side award path |
+| Activity feed | Events marked `"public": true` (with a short `text`) appear in `GET /events/feed`, session-gated, newest 25; Town Hall renders them. Everything else stays private to the player |
 | World config | `apps/api` `/world` → tip address; client falls back to the compiled default |
 | App registry | `apps/api` `/apps` serves `packages/app-manifest/src/manifests/*.json`; catalog chain is public API → registry → bundled |
 

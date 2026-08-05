@@ -104,6 +104,54 @@ func TestEventWriteIgnoresSessionCookie(t *testing.T) {
 	}
 }
 
+func TestEventFeedShowsOnlyPublicEvents(t *testing.T) {
+	s := newTestServer()
+	address := normalizeNimiqAddress(testEventAddress)
+
+	body := fmt.Sprintf(`{"address":%q,"type":"score.posted","ts":%d,"public":true,"text":"scored 4,200"}`,
+		testEventAddress, time.Now().Unix())
+	rec := httptest.NewRecorder()
+	s.handleEvents(rec, signedEventRequest(t, "nimbomber", "app-secret", body))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected 202, got %d %s", rec.Code, rec.Body)
+	}
+	// A private event from the same app must stay out of the feed.
+	rec = httptest.NewRecorder()
+	s.handleEvents(rec, signedEventRequest(t, "nimbomber", "app-secret", eventBody(time.Now().Unix())))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected 202, got %d %s", rec.Code, rec.Body)
+	}
+
+	rec = httptest.NewRecorder()
+	s.handleEventFeed(rec, httptest.NewRequest(http.MethodGet, "/events/feed", nil))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("feed without a session should 401, got %d", rec.Code)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/events/feed", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: s.tokens.sign(address, sessionTTL)})
+	rec = httptest.NewRecorder()
+	s.handleEventFeed(rec, req)
+	var feed struct{ Events []appEvent }
+	if err := json.NewDecoder(rec.Body).Decode(&feed); err != nil {
+		t.Fatal(err)
+	}
+	if len(feed.Events) != 1 || feed.Events[0].Text != "scored 4,200" {
+		t.Fatalf("expected only the public event, got %+v", feed.Events)
+	}
+}
+
+func TestPublicEventNeedsText(t *testing.T) {
+	s := newTestServer()
+	body := fmt.Sprintf(`{"address":%q,"type":"score.posted","ts":%d,"public":true}`,
+		testEventAddress, time.Now().Unix())
+	rec := httptest.NewRecorder()
+	s.handleEvents(rec, signedEventRequest(t, "nimbomber", "app-secret", body))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for a public event with no text, got %d", rec.Code)
+	}
+}
+
 func TestEventReadIsSessionScoped(t *testing.T) {
 	s := newTestServer()
 	address := normalizeNimiqAddress(testEventAddress)
