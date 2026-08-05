@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +21,10 @@ type rateLimiter struct {
 	// burst tokens, refilled at rate per second.
 	burst float64
 	rate  float64
+	// X-Forwarded-For is attacker-controlled unless a proxy we trust rewrote
+	// it, and a spoofed one buys a fresh bucket per request — a complete
+	// bypass. Off unless TRUST_PROXY_HEADERS says a proxy sits in front.
+	trustProxy bool
 }
 
 type bucket struct {
@@ -28,7 +33,12 @@ type bucket struct {
 }
 
 func newRateLimiter(burst, perSecond float64) *rateLimiter {
-	return &rateLimiter{buckets: make(map[string]*bucket), burst: burst, rate: perSecond}
+	return &rateLimiter{
+		buckets:    make(map[string]*bucket),
+		burst:      burst,
+		rate:       perSecond,
+		trustProxy: os.Getenv("TRUST_PROXY_HEADERS") != "",
+	}
 }
 
 // allow reports whether the key may act now, spending one token if so.
@@ -68,7 +78,7 @@ func (l *rateLimiter) sweepLocked(now time.Time) {
 // limit wraps a handler, answering 429 once a client outruns the bucket.
 func (l *rateLimiter) limit(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !l.allow(clientIP(r)) {
+		if !l.allow(l.clientKey(r)) {
 			w.Header().Set("Retry-After", "1")
 			http.Error(w, "too many requests", http.StatusTooManyRequests)
 			return
@@ -77,12 +87,16 @@ func (l *rateLimiter) limit(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// clientIP prefers the first X-Forwarded-For hop when the API runs behind a
-// proxy, and falls back to the socket address.
-func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		first, _, _ := strings.Cut(fwd, ",")
-		return strings.TrimSpace(first)
+// clientKey identifies the caller: the socket address, or the first
+// X-Forwarded-For hop only when a trusted proxy is known to set it.
+func (l *rateLimiter) clientKey(r *http.Request) string {
+	if l.trustProxy {
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			first, _, _ := strings.Cut(fwd, ",")
+			if hop := strings.TrimSpace(first); hop != "" {
+				return hop
+			}
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
