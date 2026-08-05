@@ -18,9 +18,8 @@ Source: `prompt.md` (product/technical spec) + `docs/architecture.md` (current i
 ## Gap this roadmap covers
 
 - NimConnect achievements and inventory — still mock. **Blocked upstream:** NimConnect exposes no production API for these, as `requestScopes` states. Do not plan work that assumes them. (Friends are real since profile-client 0.6.0.)
-- `apps/api` has no signed-event mechanism yet (spec §6); achievements/inventory writes have no trusted path
+- Signed events exist (spec §6) but no real app posts them yet, so the activity feed is empty in practice
 - No accessibility pass, no e2e tests, no sound controls, no perf-optimization pass
-- `docs/adding-an-app.md` is a stub
 
 ## Ordering principle
 
@@ -70,7 +69,7 @@ Depends on Phase 1 (real user identity to publish presence for).
 - Shared inventory (real, namespaced, app-local vs shared distinction enforced)
 - ~~Activity feed (cross-app recent activity, public stats)~~ — done. Apps opt a line in with `"public": true` plus a short `text`; `GET /events/feed` serves the newest 25 to logged-in visitors and Town Hall renders them, each row opening that player's profile. Public stats wait for real app data to aggregate.
 - Connected-app state from the catalog, and the NimConnect scopes beyond `profile:read` once they exist
-- App manifest/capabilities/SDK expansion for onboarding a second real app beyond NimBomber
+- App manifest/capabilities/SDK expansion for onboarding a second real app beyond NimBomber. The signed-event side is documented and runnable (`docs/adding-an-app.md`, `apps/api/cmd/signevent`); what is missing is a real app posting events.
 
 Research before building: shared achievement/inventory envelope validation against real app data, activity-feed aggregation, SDK surface expansion for third-party apps.
 
@@ -83,7 +82,7 @@ Depends on Phase 3 (needs backend + signed events for trusted writes).
 - Performance pass (60fps target, lazy-load panels/assets, atlas sprites, overlay-active Phaser suspension)
 - Accessibility pass (keyboard nav, contrast, no hover-dependent controls, safe-area support)
 - Sound controls + remaining loading/error states
-- E2E tests + developer docs (`adding-an-app.md` completed) + production deployment
+- E2E tests + production deployment (`adding-an-app.md` is written; revisit it if the SDK surface changes)
 
 Depends on Phases 1-4.
 

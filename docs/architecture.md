@@ -20,7 +20,7 @@ Vue HUD / overlays  <── WorldBridge ──>  Phaser plaza
 |------|------|
 | `apps/web` | Vue + Phaser mini app |
 | `packages/app-manifest` | Versioned manifest types, JSON Schema, validation, and the manifest JSON the API serves |
-| `apps/api` | Go: auth, balance proxy, presence WebSocket, world config, app registry |
+| `apps/api` | Go: auth, balance proxy, presence WebSocket, world config, app registry, signed app events (`cmd/signevent` posts one from the command line) |
 
 ## Integrations
 
