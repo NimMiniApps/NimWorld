@@ -9,7 +9,11 @@ import {
   shouldAutoConnectFriends,
   skipAutoConnectFriends,
 } from '@/adapters/nimconnect/friendsSession'
-import { loadPlazaPosition, savePlazaPosition } from '@/adapters/launcher/AppLauncher'
+import {
+  loadPlazaPosition,
+  savePlazaPosition,
+  type LaunchHistoryEntry,
+} from '@/adapters/launcher/AppLauncher'
 import type {
   ArenaStatus,
   CatalogApp,
@@ -62,6 +66,7 @@ export const usePlazaStore = defineStore('plaza', () => {
   const friendsConnected = ref(false)
   const friendsBusy = ref(false)
   const profileSheet = ref<ProfileSheetState | null>(null)
+  const launchHistory = ref<LaunchHistoryEntry[]>([])
 
   let adapters: AppAdapters | null = null
 
@@ -90,6 +95,7 @@ export const usePlazaStore = defineStore('plaza', () => {
       profile.value = await adapters.nimconnect.getCurrentProfile()
       featuredApps.value = await adapters.catalog.getFeaturedApps()
       nearbyActors.value = await adapters.presence.getActors()
+      launchHistory.value = adapters.launcher.getHistory()
       await loadFriends()
       await autoConnectFriends()
       await refreshBalance()
@@ -150,15 +156,17 @@ export const usePlazaStore = defineStore('plaza', () => {
     savePlazaPosition(position)
   }
 
-  async function launchApp(appId: string, launchUrl: string) {
+  async function launchApp(appId: string, launchUrl: string, name?: string) {
     if (!adapters) return
     if (lastPosition.value) savePlazaPosition(lastPosition.value)
     await adapters.launcher.launch({
       appId,
       launchUrl,
+      name,
       returnUrl: `${window.location.origin}${window.location.pathname}`,
       referralSource: 'plaza',
     })
+    launchHistory.value = adapters.launcher.getHistory()
   }
 
   async function refreshAfterReturn(appId?: string) {
@@ -229,7 +237,11 @@ export const usePlazaStore = defineStore('plaza', () => {
       if (sheet.mode === 'request') {
         const result = await adapters.payment.requestNim(luna, note)
         if (result.ok) {
-          toast('Request link copied to clipboard.')
+          toast(
+            sheet.recipientLabel
+              ? `Request link ready — send it to ${sheet.recipientLabel}.`
+              : 'Request link ready — shared or copied to your clipboard.',
+          )
           paymentSheet.value = null
         } else {
           toast(result.reason)
@@ -365,6 +377,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     friendsConnected,
     friendsBusy,
     profileSheet,
+    launchHistory,
     setAdapters,
     bootstrap,
     setInteraction,

@@ -12,12 +12,14 @@ const name = computed(
   () => profile.value?.displayName || profile.value?.handle || sheet.value?.fallbackLabel || 'Player',
 )
 
-/** Only offer "Add friend" when we could actually send one and are not already friends. */
-const alreadyKnown = computed(() =>
-  store.friends.concat(store.friendRequests).some((f) => f.address === sheet.value?.address),
+/** The NimConnect friendship, when there is one — drives the badge and the actions. */
+const friendship = computed(() =>
+  store.friends
+    .concat(store.friendRequests)
+    .find((f) => f.address && f.address === sheet.value?.address),
 )
 const canAddFriend = computed(
-  () => store.friendsConnected && !alreadyKnown.value && Boolean(profile.value),
+  () => store.friendsConnected && !friendship.value && Boolean(profile.value),
 )
 
 watch(sheet, () => {
@@ -29,6 +31,13 @@ function sendNim() {
   if (!current) return
   store.closeProfileSheet()
   store.openPaymentSheet({ mode: 'send', recipient: current.address, recipientLabel: name.value })
+}
+
+/** The link is addressed to us; the label only says who to hand it to. */
+function requestNim() {
+  if (!sheet.value) return
+  store.closeProfileSheet()
+  store.openPaymentSheet({ mode: 'request', recipientLabel: name.value })
 }
 
 async function addFriend() {
@@ -59,12 +68,15 @@ async function addFriend() {
         </button>
       </header>
 
+      <p v-if="friendship" class="nw-hud-badge friendship">{{ friendship.statusLabel }}</p>
+
       <p v-if="sheet.loading" class="note">Looking up NimConnect…</p>
       <p v-else-if="profile?.bio" class="bio">{{ profile.bio }}</p>
       <p v-else-if="!profile" class="note">No NimConnect profile for this address yet.</p>
 
       <div class="actions">
         <button class="nw-btn nw-btn-primary" type="button" @click="sendNim">Send NIM</button>
+        <button class="nw-btn nw-btn-secondary" type="button" @click="requestNim">Request NIM</button>
         <button
           v-if="canAddFriend"
           class="nw-btn nw-btn-secondary"
@@ -140,6 +152,13 @@ h2 {
 .bio {
   margin: 0;
   font-size: 0.88rem;
+}
+
+.friendship {
+  margin: 0;
+  justify-self: start;
+  color: var(--nw-green);
+  border-color: rgba(79, 209, 165, 0.45);
 }
 
 .note {

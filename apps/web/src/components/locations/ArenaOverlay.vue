@@ -5,7 +5,7 @@ import { usePlazaStore } from '@/stores/plazaStore'
 const store = usePlazaStore()
 
 async function play() {
-  await store.launchApp(nimbomberManifest.id, nimbomberManifest.launchUrl)
+  await store.launchApp(nimbomberManifest.id, nimbomberManifest.launchUrl, nimbomberManifest.name)
 }
 </script>
 

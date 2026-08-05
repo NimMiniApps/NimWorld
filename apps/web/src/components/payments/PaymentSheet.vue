@@ -18,7 +18,9 @@ const title = computed(() => {
     case 'send':
       return `Send to ${store.paymentSheet?.recipientLabel ?? 'friend'}`
     case 'request':
-      return 'Request NIM'
+      return store.paymentSheet?.recipientLabel
+        ? `Request from ${store.paymentSheet.recipientLabel}`
+        : 'Request NIM'
   }
 })
 
@@ -119,7 +121,7 @@ async function submit() {
         :disabled="!canSubmit"
         @click="submit"
       >
-        {{ store.paymentBusy ? 'Working…' : mode === 'request' ? 'Copy request link' : 'Send NIM' }}
+        {{ store.paymentBusy ? 'Working…' : mode === 'request' ? 'Create request link' : 'Send NIM' }}
       </button>
     </section>
   </div>

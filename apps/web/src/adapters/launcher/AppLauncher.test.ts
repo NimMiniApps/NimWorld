@@ -30,6 +30,7 @@ describe('buildReturnUrl', () => {
 describe('BrowserAppLauncher', () => {
   beforeEach(() => {
     vi.stubGlobal('sessionStorage', memoryStorage())
+    vi.stubGlobal('localStorage', memoryStorage())
     vi.stubGlobal('window', {
       open: vi.fn(() => null),
       location: {
@@ -98,5 +99,31 @@ describe('BrowserAppLauncher', () => {
     const assigned = String((window.location.assign as ReturnType<typeof vi.fn>).mock.calls[0]?.[0])
     const url = new URL(assigned)
     expect(url.searchParams.get('returnUrl')).toContain('returnedFrom=nimbomber')
+  })
+
+  it('records launch history newest first, one entry per app', async () => {
+    const launcher = new BrowserAppLauncher()
+    await launcher.launch({ appId: 'nimbomber', launchUrl: 'https://a.local/', name: 'NimBomber' })
+    await launcher.launch({ appId: 'playnimiq', launchUrl: 'https://b.local/', name: 'PlayNimiq' })
+    await launcher.launch({ appId: 'nimbomber', launchUrl: 'https://a.local/', name: 'NimBomber' })
+
+    expect(launcher.getHistory().map((e) => e.appId)).toEqual(['nimbomber', 'playnimiq'])
+    expect(launcher.getHistory()[0]).toMatchObject({
+      name: 'NimBomber',
+      launchUrl: 'https://a.local/',
+    })
+  })
+
+  it('caps history and survives a new launcher instance', async () => {
+    const first = new BrowserAppLauncher()
+    for (let i = 0; i < 10; i += 1) {
+      await first.launch({ appId: `app-${i}`, launchUrl: `https://app-${i}.local/` })
+    }
+
+    const history = new BrowserAppLauncher().getHistory()
+    expect(history).toHaveLength(8)
+    expect(history[0]?.appId).toBe('app-9')
+    // No name given: the id has to stand in, never an empty label.
+    expect(history[0]?.name).toBe('app-9')
   })
 })

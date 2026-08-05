@@ -1,4 +1,4 @@
-import { isNimiqPayHost } from '@/auth/session'
+import { getResolvedAddress, isNimiqPayHost } from '@/auth/session'
 
 export type PaymentResult =
   | { ok: true; txHash?: string }
@@ -48,19 +48,50 @@ export class MockNimiqPaymentAdapter implements NimiqPaymentAdapter {
   }
 
   async requestNim(amountLuna: number, message?: string): Promise<PaymentResult> {
-    const nim = amountLuna / 100_000
-    const params = new URLSearchParams({
-      amount: String(nim),
-    })
-    if (message) params.set('message', truncateMessage(message))
-    const link = `nimiq:?${params.toString()}`
+    return shareRequestLink(amountLuna, message)
+  }
+}
+
+/**
+ * A request is a payment link addressed to *us*, so the other side can pay it
+ * with one tap. There is no request API in the Mini App SDK or the Hub, so the
+ * link is handed to the OS share sheet where one exists (Pay, mobile) and to
+ * the clipboard otherwise.
+ */
+async function shareRequestLink(amountLuna: number, message?: string): Promise<PaymentResult> {
+  const address = getResolvedAddress()
+  if (!address) {
+    return { ok: false, reason: 'Sign in before requesting NIM — a request needs your address.' }
+  }
+
+  const link = buildRequestUri(address, amountLuna, message)
+
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
     try {
-      await navigator.clipboard.writeText(link)
+      await navigator.share({ title: 'NIM request', text: message || 'NIM request', url: link })
       return { ok: true }
-    } catch {
-      return { ok: false, reason: `Could not copy request link: ${link}` }
+    } catch (error) {
+      // A cancelled share sheet is a user decision, not a failure to report as one.
+      if (error instanceof Error && error.name === 'AbortError') {
+        return { ok: false, reason: 'Request cancelled.' }
+      }
+      // Anything else (unsupported scheme, permission) falls through to the clipboard.
     }
   }
+
+  try {
+    await navigator.clipboard.writeText(link)
+    return { ok: true }
+  } catch {
+    return { ok: false, reason: `Could not copy request link: ${link}` }
+  }
+}
+
+/** `nimiq:<address>?amount=<NIM>&message=…` — without the address it is unpayable. */
+export function buildRequestUri(address: string, amountLuna: number, message?: string): string {
+  const params = new URLSearchParams({ amount: String(amountLuna / 100_000) })
+  if (message) params.set('message', truncateMessage(message))
+  return `nimiq:${address.replace(/\s+/g, '')}?${params.toString()}`
 }
 
 function truncateMessage(message: string): string {
