@@ -32,12 +32,13 @@ onMounted(async () => {
     </div>
 
     <div class="actions">
+      <!-- No handle means no profile page to open — offer to create one instead. -->
       <button
         class="nw-btn nw-btn-primary"
         type="button"
         @click="store.openNimConnectProfile(store.profile?.handle)"
       >
-        View profile
+        {{ store.profile?.handle ? 'View profile' : 'Create your NimConnect profile' }}
       </button>
       <button class="nw-btn nw-btn-secondary" type="button" @click="store.openPaymentSheet({ mode: 'tip' })">
         Tip NimWorld

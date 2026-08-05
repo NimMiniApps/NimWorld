@@ -22,6 +22,14 @@ const canAddFriend = computed(
   () => store.friendsConnected && !friendship.value && Boolean(profile.value),
 )
 
+/** Addresses match by their compact form — NimConnect spaces them, presence may not. */
+const isSelf = computed(() => {
+  const mine = store.profile?.address
+  return Boolean(mine && compact(mine) === compact(sheet.value?.address ?? ''))
+})
+
+const compact = (address: string) => address.replace(/\s+/g, '').toUpperCase()
+
 watch(sheet, () => {
   requestError.value = null
 })
@@ -72,11 +80,35 @@ async function addFriend() {
 
       <p v-if="sheet.loading" class="note">Looking up NimConnect…</p>
       <p v-else-if="profile?.bio" class="bio">{{ profile.bio }}</p>
-      <p v-else-if="!profile" class="note">No NimConnect profile for this address yet.</p>
+
+      <div v-else-if="!profile" class="claim">
+        <p class="claim-title">
+          {{ isSelf ? 'You have no NimConnect profile yet' : 'No NimConnect profile yet' }}
+        </p>
+        <p class="claim-copy">
+          {{
+            isSelf
+              ? 'Claim a @handle to show a name, bio and avatar to everyone in the plaza.'
+              : 'This player walks the plaza as an address. A NimConnect handle gives them a name, bio and avatar here.'
+          }}
+        </p>
+        <button
+          class="nw-btn nw-btn-primary claim-btn"
+          type="button"
+          @click="store.openNimConnectProfile()"
+        >
+          {{ isSelf ? 'Claim your handle' : 'What is NimConnect?' }}
+        </button>
+      </div>
 
       <div class="actions">
-        <button class="nw-btn nw-btn-primary" type="button" @click="sendNim">Send NIM</button>
-        <button class="nw-btn nw-btn-secondary" type="button" @click="requestNim">Request NIM</button>
+        <!-- Paying yourself is not a feature. -->
+        <template v-if="!isSelf">
+          <button class="nw-btn nw-btn-primary" type="button" @click="sendNim">Send NIM</button>
+          <button class="nw-btn nw-btn-secondary" type="button" @click="requestNim">
+            Request NIM
+          </button>
+        </template>
         <button
           v-if="canAddFriend"
           class="nw-btn nw-btn-secondary"
@@ -177,5 +209,36 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.actions .nw-btn {
+  flex: 1 1 8.5rem;
+}
+
+.claim {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(155, 123, 255, 0.45);
+  background: rgba(155, 123, 255, 0.1);
+}
+
+.claim-title {
+  margin: 0;
+  font-family: var(--nw-font-display);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.claim-copy {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--nw-muted);
+}
+
+.claim-btn {
+  justify-self: start;
+  margin-top: 0.2rem;
 }
 </style>

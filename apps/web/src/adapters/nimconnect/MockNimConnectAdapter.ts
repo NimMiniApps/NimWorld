@@ -6,6 +6,7 @@ import type {
   PublicProfile,
 } from '@/domain/types'
 import type { NimConnectAdapter, PermissionResult } from './types'
+import { openNimconnect } from './links'
 import {
   MOCK_ACHIEVEMENTS,
   MOCK_FRIENDS,
@@ -80,9 +81,7 @@ export class MockNimConnectAdapter implements NimConnectAdapter {
   }
 
   async openProfile(handle?: string): Promise<void> {
-    const target = handle ?? this.profile.handle
-    if (!target) return
-    window.open(`https://nimconnect.nimiqminiapps.com/@${target}`, '_blank', 'noopener,noreferrer')
+    openNimconnect(handle ?? this.profile.handle)
   }
 
   async refresh(): Promise<void> {

@@ -14,6 +14,7 @@ import {
 } from './mockData'
 import { createFriendsSession, NIMCONNECT_AUDIENCE, storedSessionToken } from './friendsSession'
 import type { NimConnectAdapter, PermissionResult } from './types'
+import { openNimconnect } from './links'
 
 /**
  * Uses real @nimconnect/profile-client for public profile/handle lookup and,
@@ -134,9 +135,7 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   }
 
   async openProfile(handle?: string): Promise<void> {
-    const target = handle ?? this.cachedProfile?.handle
-    if (!target) return
-    window.open(`https://nimconnect.nimiqminiapps.com/@${target}`, '_blank', 'noopener,noreferrer')
+    openNimconnect(handle ?? this.cachedProfile?.handle)
   }
 
   async refresh(): Promise<void> {
