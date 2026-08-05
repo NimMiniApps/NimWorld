@@ -12,7 +12,7 @@ import {
   MOCK_INVENTORY,
   MOCK_PROFILE,
 } from './mockData'
-import { createFriendsSession, NIMCONNECT_AUDIENCE, storedSessionToken } from './friendsSession'
+import { createFriendsAuthorization, NIMCONNECT_AUDIENCE } from './friendsSession'
 import type { NimConnectAdapter, PermissionResult } from './types'
 import { openNimconnect } from './links'
 
@@ -24,10 +24,8 @@ import { openNimconnect } from './links'
 export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   private client = createProfileClient({
     baseUrl: nimconnectApiBase(),
-    // Binds the login signature to NimWorld: it cannot be replayed into
-    // another app, and our own backend can verify the very same signature.
+    // The v3 grant is audience-bound and cannot be replayed as NimConnect.
     audience: NIMCONNECT_AUDIENCE,
-    sessionToken: storedSessionToken(),
   })
   private address: string | null = null
   private cachedProfile: PublicProfile | null = null
@@ -72,11 +70,16 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   }
 
   hasFriendsSession(): boolean {
-    return Boolean(this.client.getSessionToken())
+    return Boolean(this.client.getAuthorization())
   }
 
   async connectFriends(): Promise<void> {
-    await createFriendsSession(this.client)
+    const authorization = await createFriendsAuthorization(this.client)
+    this.client = createProfileClient({
+      baseUrl: nimconnectApiBase(),
+      audience: NIMCONNECT_AUDIENCE,
+      authorization,
+    })
   }
 
   // No session, no friends — an invented list is worse than an empty one.

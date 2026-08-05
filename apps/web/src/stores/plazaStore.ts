@@ -329,12 +329,12 @@ export const usePlazaStore = defineStore('plaza', () => {
   const connectFriends = () => runFriendAction((a) => a.nimconnect.connectFriends())
 
   /**
-   * Friends come with the login signature instead of a second, separate one.
-   * A refusal or a network failure is remembered for the tab, so the Social
-   * Club's Connect button stays the way back in.
+   * Restore the seven-day grant or request one readable v3 authorization.
+   * A refusal or network failure is remembered for this load; the Social
+   * Club's Connect button remains the way back in.
    */
   async function autoConnectFriends() {
-    if (!shouldAutoConnectFriends()) return
+    if (!(await shouldAutoConnectFriends())) return
     skipAutoConnectFriends() // one attempt per load, whatever the outcome
     try {
       await connectFriends()

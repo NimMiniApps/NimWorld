@@ -126,5 +126,5 @@ export async function logout(): Promise<void> {
   resolvedAddress = null
   // The NimConnect session belongs to the account that just left.
   const { clearFriendsSession } = await import('@/adapters/nimconnect/friendsSession')
-  clearFriendsSession()
+  await clearFriendsSession()
 }

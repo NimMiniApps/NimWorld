@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const client = {
   getDisplayIdentity: vi.fn(),
-  getSessionToken: vi.fn(() => null as string | null),
-  createSession: vi.fn(),
+  getAuthorization: vi.fn(() => null as { token: string } | null),
+  createAuthorization: vi.fn(),
   listFriends: vi.fn(),
   listFriendRequests: vi.fn(),
   sendFriendRequest: vi.fn(),
@@ -29,7 +29,7 @@ const { ProfileClientNimConnectAdapter } = await import('./ProfileClientNimConne
 
 describe('friends via NimConnect', () => {
   beforeEach(() => {
-    client.getSessionToken.mockReturnValue(null)
+    client.getAuthorization.mockReturnValue(null)
     client.listFriends.mockReset()
   })
 
@@ -41,7 +41,7 @@ describe('friends via NimConnect', () => {
   })
 
   it('maps real friend entries once a session exists', async () => {
-    client.getSessionToken.mockReturnValue('token')
+    client.getAuthorization.mockReturnValue({ token: 'token' })
     client.listFriends.mockResolvedValue([
       { address: 'NQ11 AAAA', handle: 'luna', displayName: 'Luna', status: 'accepted', friendshipId: '1' },
       { address: 'NQ22 BBBB CCCC DDDD EEEE', status: 'pending_out', friendshipId: '2' },
@@ -56,7 +56,7 @@ describe('friends via NimConnect', () => {
   })
 
   it('returns an empty list when the friends call fails', async () => {
-    client.getSessionToken.mockReturnValue('token')
+    client.getAuthorization.mockReturnValue({ token: 'token' })
     client.listFriends.mockRejectedValue(new Error('401'))
 
     expect(await new ProfileClientNimConnectAdapter().getFriends()).toEqual([])
@@ -68,7 +68,7 @@ describe('friends via NimConnect', () => {
   })
 
   it('keeps request direction so the UI can offer accept vs cancel', async () => {
-    client.getSessionToken.mockReturnValue('token')
+    client.getAuthorization.mockReturnValue({ token: 'token' })
     client.listFriendRequests.mockResolvedValue([
       { address: 'NQ11 AAAA', handle: 'luna', status: 'pending_in', friendshipId: '1' },
       { address: 'NQ22 BBBB', handle: 'nova', status: 'pending_out', friendshipId: '2' },
