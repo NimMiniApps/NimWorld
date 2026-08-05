@@ -45,7 +45,7 @@ Sequenced for the earliest compelling, demoable milestone — real platform loop
 **Done when:** a user can interact with another player's public profile and send or request NIM without leaving the world.
 
 - ~~Real `NimiqPaymentAdapter` — send NIM, success/failure states~~
-- Public profile inspection panel (another user's NimConnect profile) — **the actionable item.** `getDisplayIdentity` takes any address and the ghosts in `LocalPresenceAdapter` already carry one.
+- ~~Public profile inspection panel (another user's NimConnect profile)~~ — done. `ProfileSheet` opens from Nearby, the friends HUD, and the Social Club; `getProfile(address)` resolves any address through `getDisplayIdentity`.
 - A real request-NIM flow, replacing the clipboard `nimiq:` link
 - App launch history surfaced in UI
 - ~~Real friends/contacts data~~ — done via profile-client 0.6.0 (`listFriends` behind a NimConnect session, connected from the Social Club). Friend requests (send/accept/decline/remove) and friend profile cards are still open.

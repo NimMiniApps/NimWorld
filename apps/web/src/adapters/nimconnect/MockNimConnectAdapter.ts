@@ -24,6 +24,10 @@ export class MockNimConnectAdapter implements NimConnectAdapter {
     return { ...this.profile, source: 'mock' }
   }
 
+  async getProfile(address: string): Promise<PublicProfile | null> {
+    return { ...MOCK_PROFILE, address, source: 'mock' }
+  }
+
   async getFriends(): Promise<PublicFriend[]> {
     return MOCK_FRIENDS.map((f) => ({ ...f }))
   }

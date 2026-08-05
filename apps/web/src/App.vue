@@ -14,6 +14,7 @@ import VirtualJoystick from '@/components/hud/VirtualJoystick.vue'
 import NearbyPlayers from '@/components/hud/NearbyPlayers.vue'
 import LocationOverlay from '@/components/overlays/LocationOverlay.vue'
 import PaymentSheet from '@/components/payments/PaymentSheet.vue'
+import ProfileSheet from '@/components/profile/ProfileSheet.vue'
 import { usePlazaStore } from '@/stores/plazaStore'
 import { resolveSession } from '@/auth/session'
 
@@ -124,6 +125,7 @@ function onFirstMove() {
 
     <LocationOverlay />
     <PaymentSheet />
+    <ProfileSheet />
   </div>
 </template>
 

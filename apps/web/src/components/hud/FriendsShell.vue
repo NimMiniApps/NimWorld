@@ -30,10 +30,15 @@ const pending = computed(() =>
     <ul class="list" v-if="rows.length">
       <li v-for="friend in rows" :key="friend.key">
         <IdenticonAvatar :address="friend.address" :fallback="friend.handle" size="2.1rem" />
-        <div class="meta">
+        <button
+          class="meta"
+          type="button"
+          :disabled="!friend.address"
+          @click="store.openProfileSheet(friend.address, friend.handle)"
+        >
           <p class="handle">{{ friend.handle }}</p>
           <p class="place">{{ friend.place }}</p>
-        </div>
+        </button>
       </li>
     </ul>
     <p v-else class="empty">
@@ -87,6 +92,22 @@ const pending = computed(() =>
   padding: 0.35rem 0.3rem;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.meta {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Mock friends carry no address, so there is nothing to look up. */
+.meta:disabled {
+  cursor: default;
 }
 
 .handle {

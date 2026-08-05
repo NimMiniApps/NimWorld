@@ -44,9 +44,21 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
       return
     }
 
+    this.cachedProfile =
+      (await this.getProfile(address)) ??
+      (await withIdenticon({ ...MOCK_PROFILE, address, source: 'mock' }))
+  }
+
+  async getCurrentProfile(): Promise<PublicProfile | null> {
+    if (!this.cachedProfile) await this.initialize()
+    return this.cachedProfile
+  }
+
+  /** Public lookup — same call for our own address and anyone else's. */
+  async getProfile(address: string): Promise<PublicProfile | null> {
     try {
       const identity = await this.client.getDisplayIdentity(address)
-      this.cachedProfile = await withIdenticon({
+      return await withIdenticon({
         address: identity.address,
         handle: identity.handle,
         displayName: identity.displayName,
@@ -54,17 +66,8 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
         source: 'nimconnect',
       })
     } catch {
-      this.cachedProfile = await withIdenticon({
-        ...MOCK_PROFILE,
-        address,
-        source: 'mock',
-      })
+      return null
     }
-  }
-
-  async getCurrentProfile(): Promise<PublicProfile | null> {
-    if (!this.cachedProfile) await this.initialize()
-    return this.cachedProfile
   }
 
   hasFriendsSession(): boolean {

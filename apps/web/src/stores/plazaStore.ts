@@ -29,6 +29,14 @@ export interface PaymentSheetState {
   recipientLabel?: string
 }
 
+export interface ProfileSheetState {
+  address: string
+  /** Shown while the lookup runs, and kept if NimConnect knows nothing. */
+  fallbackLabel: string
+  profile: PublicProfile | null
+  loading: boolean
+}
+
 const MAX_NIM = 10_000
 
 export const usePlazaStore = defineStore('plaza', () => {
@@ -53,6 +61,7 @@ export const usePlazaStore = defineStore('plaza', () => {
   /** False while `friends` is still the mock list. */
   const friendsConnected = ref(false)
   const friendsBusy = ref(false)
+  const profileSheet = ref<ProfileSheetState | null>(null)
 
   let adapters: AppAdapters | null = null
 
@@ -183,6 +192,20 @@ export const usePlazaStore = defineStore('plaza', () => {
       recipient: input.recipient,
       recipientLabel: input.recipientLabel,
     }
+  }
+
+  /** Public profile of another player. Opens immediately, fills in when resolved. */
+  async function openProfileSheet(address: string, fallbackLabel: string) {
+    if (!adapters || !address) return
+    profileSheet.value = { address, fallbackLabel, profile: null, loading: true }
+    const resolved = await adapters.nimconnect.getProfile(address)
+    // A second profile may have been opened while this lookup was in flight.
+    if (profileSheet.value?.address !== address) return
+    profileSheet.value = { ...profileSheet.value, profile: resolved, loading: false }
+  }
+
+  function closeProfileSheet() {
+    profileSheet.value = null
   }
 
   function closePaymentSheet() {
@@ -341,6 +364,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     friendRequests,
     friendsConnected,
     friendsBusy,
+    profileSheet,
     setAdapters,
     bootstrap,
     setInteraction,
@@ -351,6 +375,8 @@ export const usePlazaStore = defineStore('plaza', () => {
     refreshAfterReturn,
     openPaymentSheet,
     closePaymentSheet,
+    openProfileSheet,
+    closeProfileSheet,
     submitPayment,
     refreshBalance,
     loadFriends,

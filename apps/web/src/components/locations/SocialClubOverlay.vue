@@ -47,7 +47,11 @@ const decline = (friend: PublicFriend) => run(() => store.declineFriendRequest(f
 
 const remove = (friend: PublicFriend) => run(() => store.removeFriend(friend.address!), 'Friend removed')
 
-const view = (handle: string) => store.openNimConnectProfile(handle)
+/** Real friends open the in-app profile sheet; handle-only mocks fall back to NimConnect. */
+const view = (friend: PublicFriend) =>
+  friend.address
+    ? store.openProfileSheet(friend.address, label(friend))
+    : store.openNimConnectProfile(friend.handle)
 
 const label = (friend: PublicFriend) =>
   friend.handle ? `@${friend.handle}` : friend.displayName
@@ -122,8 +126,8 @@ const label = (friend: PublicFriend) =>
             <button
               class="nw-btn nw-btn-secondary"
               type="button"
-              :disabled="!friend.handle"
-              @click="view(friend.handle)"
+              :disabled="!friend.handle && !friend.address"
+              @click="view(friend)"
             >
               Profile
             </button>

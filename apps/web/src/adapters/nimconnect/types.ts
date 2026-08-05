@@ -15,6 +15,8 @@ export interface PermissionResult {
 export interface NimConnectAdapter {
   initialize(): Promise<void>
   getCurrentProfile(): Promise<PublicProfile | null>
+  /** Public profile of any address — nothing here is private to that user. */
+  getProfile(address: string): Promise<PublicProfile | null>
   getFriends(): Promise<PublicFriend[]>
   /** True once a NimConnect session exists, i.e. getFriends() returns real data. */
   hasFriendsSession(): boolean

@@ -30,10 +30,15 @@ function sendTo(actor: { label: string; address?: string }) {
     <ul v-if="expanded">
       <li v-for="actor in players" :key="actor.id">
         <IdenticonAvatar :address="actor.address" :fallback="actor.label" size="1.9rem" />
-        <div class="meta">
+        <button
+          class="meta"
+          type="button"
+          :disabled="!actor.address"
+          @click="store.openProfileSheet(actor.address ?? '', actor.label)"
+        >
           <p class="label">{{ actor.label }}</p>
           <p class="status">{{ actor.statusLabel }}</p>
-        </div>
+        </button>
         <button
           v-if="isPayableActor(actor)"
           class="nw-btn nw-btn-secondary send"
@@ -98,6 +103,18 @@ li {
 .meta {
   flex: 1;
   min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Ghosts and NPCs have no address to look up — they just read as plain text. */
+.meta:disabled {
+  cursor: default;
 }
 
 .label {
