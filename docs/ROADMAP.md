@@ -17,11 +17,9 @@ Source: `prompt.md` (product/technical spec) + `docs/architecture.md` (current i
 
 ## Gap this roadmap covers
 
-- NimConnect friends, achievements, inventory — still mock (only profile is real). **Blocked upstream:** NimConnect exposes no production API for these, as `requestScopes` states. Do not plan work that assumes them.
-- `requestNim` only copies a `nimiq:` link to the clipboard; there is no real request flow
+- NimConnect achievements and inventory — still mock. **Blocked upstream:** NimConnect exposes no production API for these, as `requestScopes` states. Do not plan work that assumes them. (Friends are real since profile-client 0.6.0.)
 - No real presence (WebSocket) — architecture.md: "not implemented, local ghosts/NPCs only"
 - `apps/api` covers auth only — world config, manifests, presence, signed events, and rate limiting from spec §6 are not started
-- Another user's public profile cannot be inspected, though the profile client already resolves any address
 - No accessibility pass, no e2e tests, no sound controls, no perf-optimization pass
 - `docs/adding-an-app.md` is a stub
 
@@ -36,19 +34,19 @@ Sequenced for the earliest compelling, demoable milestone — real platform loop
 **Done when:** a user can open NimWorld inside Nimiq Pay, authenticate with real NimConnect, walk the plaza, inspect real profile data, and launch NimBomber (or another Mini App) before returning seamlessly to the plaza.
 
 - ~~Real Nimiq Mini App environment initialization~~
-- Real NimConnect profile wiring — done. Scopes beyond `profile:read` are blocked upstream and belong to Phase 4.
+- Real NimConnect profile wiring — done. `friends:read` landed with profile-client 0.6.0; the remaining scopes are blocked upstream and belong to Phase 4.
 - ~~Real NimiqMiniApps catalog integration (replace/augment manifest fallback)~~ — connected-app state still outstanding, folded into Phase 4
 - ~~Real `AppLauncher` navigation (NimBomber) + return-state restoration end to end~~
 
-## Phase 2 — Social & Payments
+## Phase 2 — Social & Payments — **done**
 
 **Done when:** a user can interact with another player's public profile and send or request NIM without leaving the world.
 
 - ~~Real `NimiqPaymentAdapter` — send NIM, success/failure states~~
-- Public profile inspection panel (another user's NimConnect profile) — **the actionable item.** `getDisplayIdentity` takes any address and the ghosts in `LocalPresenceAdapter` already carry one.
-- A real request-NIM flow, replacing the clipboard `nimiq:` link
-- App launch history surfaced in UI
-- Real friends/contacts data + friend profile cards — **blocked upstream**, no NimConnect API. Deferred, not scheduled.
+- ~~Public profile inspection panel (another user's NimConnect profile)~~ — done. `ProfileSheet` opens from Nearby, the friends HUD, and the Social Club; `getProfile(address)` resolves any address through `getDisplayIdentity`.
+- ~~A real request-NIM flow, replacing the clipboard `nimiq:` link~~ — done. Requests now build `nimiq:<your address>?amount=…` (the old link had no recipient and was unpayable) and go to the OS share sheet, clipboard as fallback. Neither the Mini App SDK nor the Hub exposes a request API, so there is nothing further to wire until one exists.
+- ~~App launch history surfaced in UI~~ — done. `BrowserAppLauncher` keeps the last 8 launches in localStorage; the Arcade shows them as relaunch chips.
+- ~~Real friends/contacts data~~ — done via profile-client 0.6.0 (`listFriends` behind a NimConnect session, connected from the Social Club). Friend requests (send/accept/decline/remove) and friend profile cards landed with the friends session and `ProfileSheet`.
 
 Research before building: Nimiq Pay request-NIM flow, NimConnect public-field permissions.
 

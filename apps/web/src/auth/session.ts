@@ -124,4 +124,7 @@ export async function loginWithHub(): Promise<string> {
 export async function logout(): Promise<void> {
   await fetch(`${AUTH_API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' })
   resolvedAddress = null
+  // The NimConnect session belongs to the account that just left.
+  const { clearFriendsSession } = await import('@/adapters/nimconnect/friendsSession')
+  clearFriendsSession()
 }

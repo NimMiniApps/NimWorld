@@ -5,8 +5,23 @@ import type { PlazaActor } from '@/adapters/presence/PresenceAdapter'
 import { NIMWORLD_TIP_ADDRESS, nimToLuna } from '@/adapters/payment/paymentConfig'
 import { fetchLiveBalanceNim } from '@/adapters/payment/balanceApi'
 import { getResolvedAddress } from '@/auth/session'
-import { loadPlazaPosition, savePlazaPosition } from '@/adapters/launcher/AppLauncher'
-import type { ArenaStatus, CatalogApp, InteractionTarget, PublicProfile, WorldPosition } from '@/domain/types'
+import {
+  shouldAutoConnectFriends,
+  skipAutoConnectFriends,
+} from '@/adapters/nimconnect/friendsSession'
+import {
+  loadPlazaPosition,
+  savePlazaPosition,
+  type LaunchHistoryEntry,
+} from '@/adapters/launcher/AppLauncher'
+import type {
+  ArenaStatus,
+  CatalogApp,
+  InteractionTarget,
+  PublicFriend,
+  PublicProfile,
+  WorldPosition,
+} from '@/domain/types'
 import { nimbomberManifest, playnimiqManifest } from '@nimworld/app-manifest'
 
 export type PaymentMode = 'tip' | 'send' | 'request'
@@ -16,6 +31,14 @@ export interface PaymentSheetState {
   mode: PaymentMode
   recipient?: string
   recipientLabel?: string
+}
+
+export interface ProfileSheetState {
+  address: string
+  /** Shown while the lookup runs, and kept if NimConnect knows nothing. */
+  fallbackLabel: string
+  profile: PublicProfile | null
+  loading: boolean
 }
 
 const MAX_NIM = 10_000
@@ -37,6 +60,13 @@ export const usePlazaStore = defineStore('plaza', () => {
   const paymentBusy = ref(false)
   const balanceNim = ref<number | null>(null)
   const balanceIsPreview = ref(true)
+  const friends = ref<PublicFriend[]>([])
+  const friendRequests = ref<PublicFriend[]>([])
+  /** False while `friends` is still the mock list. */
+  const friendsConnected = ref(false)
+  const friendsBusy = ref(false)
+  const profileSheet = ref<ProfileSheetState | null>(null)
+  const launchHistory = ref<LaunchHistoryEntry[]>([])
 
   let adapters: AppAdapters | null = null
 
@@ -65,6 +95,9 @@ export const usePlazaStore = defineStore('plaza', () => {
       profile.value = await adapters.nimconnect.getCurrentProfile()
       featuredApps.value = await adapters.catalog.getFeaturedApps()
       nearbyActors.value = await adapters.presence.getActors()
+      launchHistory.value = adapters.launcher.getHistory()
+      await loadFriends()
+      await autoConnectFriends()
       await refreshBalance()
       const games = await adapters.catalog.getApps()
       const fromCatalog = games.filter((a) =>
@@ -123,15 +156,17 @@ export const usePlazaStore = defineStore('plaza', () => {
     savePlazaPosition(position)
   }
 
-  async function launchApp(appId: string, launchUrl: string) {
+  async function launchApp(appId: string, launchUrl: string, name?: string) {
     if (!adapters) return
     if (lastPosition.value) savePlazaPosition(lastPosition.value)
     await adapters.launcher.launch({
       appId,
       launchUrl,
+      name,
       returnUrl: `${window.location.origin}${window.location.pathname}`,
       referralSource: 'plaza',
     })
+    launchHistory.value = adapters.launcher.getHistory()
   }
 
   async function refreshAfterReturn(appId?: string) {
@@ -167,6 +202,20 @@ export const usePlazaStore = defineStore('plaza', () => {
     }
   }
 
+  /** Public profile of another player. Opens immediately, fills in when resolved. */
+  async function openProfileSheet(address: string, fallbackLabel: string) {
+    if (!adapters || !address) return
+    profileSheet.value = { address, fallbackLabel, profile: null, loading: true }
+    const resolved = await adapters.nimconnect.getProfile(address)
+    // A second profile may have been opened while this lookup was in flight.
+    if (profileSheet.value?.address !== address) return
+    profileSheet.value = { ...profileSheet.value, profile: resolved, loading: false }
+  }
+
+  function closeProfileSheet() {
+    profileSheet.value = null
+  }
+
   function closePaymentSheet() {
     if (paymentBusy.value) return
     paymentSheet.value = null
@@ -188,7 +237,11 @@ export const usePlazaStore = defineStore('plaza', () => {
       if (sheet.mode === 'request') {
         const result = await adapters.payment.requestNim(luna, note)
         if (result.ok) {
-          toast('Request link copied to clipboard.')
+          toast(
+            sheet.recipientLabel
+              ? `Request link ready — send it to ${sheet.recipientLabel}.`
+              : 'Request link ready — shared or copied to your clipboard.',
+          )
           paymentSheet.value = null
         } else {
           toast(result.reason)
@@ -235,6 +288,56 @@ export const usePlazaStore = defineStore('plaza', () => {
     balanceIsPreview.value = true
   }
 
+  async function loadFriends() {
+    if (!adapters) return
+    friendsConnected.value = adapters.nimconnect.hasFriendsSession()
+    friends.value = await adapters.nimconnect.getFriends()
+    friendRequests.value = friendsConnected.value
+      ? await adapters.nimconnect.getFriendRequests()
+      : []
+  }
+
+  /**
+   * Every friends mutation routes through here so the HUD and the Social Club
+   * panel can never disagree about the list. Rethrows so callers can show why.
+   */
+  async function runFriendAction(action: (a: AppAdapters) => Promise<void>) {
+    if (!adapters) return
+    friendsBusy.value = true
+    try {
+      await action(adapters)
+      await loadFriends()
+    } finally {
+      friendsBusy.value = false
+    }
+  }
+
+  const connectFriends = () => runFriendAction((a) => a.nimconnect.connectFriends())
+
+  /**
+   * Friends come with the login signature instead of a second, separate one.
+   * A refusal or a network failure is remembered for the tab, so the Social
+   * Club's Connect button stays the way back in.
+   */
+  async function autoConnectFriends() {
+    if (!shouldAutoConnectFriends()) return
+    skipAutoConnectFriends() // one attempt per load, whatever the outcome
+    try {
+      await connectFriends()
+    } catch {
+      // Declined or unreachable: the Social Club's Connect button is the way back.
+    }
+  }
+
+  const sendFriendRequest = (to: string) =>
+    runFriendAction((a) => a.nimconnect.sendFriendRequest(to))
+  const acceptFriendRequest = (id: string) =>
+    runFriendAction((a) => a.nimconnect.acceptFriendRequest(id))
+  const declineFriendRequest = (id: string) =>
+    runFriendAction((a) => a.nimconnect.declineFriendRequest(id))
+  const removeFriend = (address: string) =>
+    runFriendAction((a) => a.nimconnect.removeFriend(address))
+
   async function openNimConnectProfile(handle?: string) {
     if (!adapters) return
     await adapters.nimconnect.openProfile(handle)
@@ -269,6 +372,12 @@ export const usePlazaStore = defineStore('plaza', () => {
     paymentBusy,
     balanceNim,
     balanceIsPreview,
+    friends,
+    friendRequests,
+    friendsConnected,
+    friendsBusy,
+    profileSheet,
+    launchHistory,
     setAdapters,
     bootstrap,
     setInteraction,
@@ -279,8 +388,16 @@ export const usePlazaStore = defineStore('plaza', () => {
     refreshAfterReturn,
     openPaymentSheet,
     closePaymentSheet,
+    openProfileSheet,
+    closeProfileSheet,
     submitPayment,
     refreshBalance,
+    loadFriends,
+    connectFriends,
+    sendFriendRequest,
+    acceptFriendRequest,
+    declineFriendRequest,
+    removeFriend,
     openNimConnectProfile,
     loadFountainExtras,
   }

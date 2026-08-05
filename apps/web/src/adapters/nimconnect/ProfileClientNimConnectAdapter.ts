@@ -1,4 +1,4 @@
-import { createProfileClient } from '@nimconnect/profile-client'
+import { createProfileClient, type FriendEntry } from '@nimconnect/profile-client'
 import type {
   Achievement,
   InventoryItem,
@@ -9,19 +9,26 @@ import type {
 import { identiconDataUrl } from '@/lib/identicon'
 import {
   MOCK_ACHIEVEMENTS,
-  MOCK_FRIENDS,
   MOCK_INVENTORY,
   MOCK_PROFILE,
 } from './mockData'
+import { createFriendsSession, NIMCONNECT_AUDIENCE, storedSessionToken } from './friendsSession'
 import type { NimConnectAdapter, PermissionResult } from './types'
+import { openNimconnect } from './links'
 
 /**
- * Uses real @nimconnect/profile-client for public profile/handle lookup.
- * Friends, achievements, and inventory remain clearly labelled mocks until
- * NimConnect exposes production APIs for those capabilities.
+ * Uses real @nimconnect/profile-client for public profile/handle lookup and,
+ * once a NimConnect session exists, for friends. Achievements and inventory
+ * remain clearly labelled mocks until NimConnect exposes APIs for them.
  */
 export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
-  private client = createProfileClient()
+  private client = createProfileClient({
+    baseUrl: nimconnectApiBase(),
+    // Binds the login signature to NimWorld: it cannot be replayed into
+    // another app, and our own backend can verify the very same signature.
+    audience: NIMCONNECT_AUDIENCE,
+    sessionToken: storedSessionToken(),
+  })
   private address: string | null = null
   private cachedProfile: PublicProfile | null = null
 
@@ -38,22 +45,9 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
       return
     }
 
-    try {
-      const identity = await this.client.getDisplayIdentity(address)
-      this.cachedProfile = await withIdenticon({
-        address: identity.address,
-        handle: identity.handle,
-        displayName: identity.displayName,
-        bio: identity.bio,
-        source: 'nimconnect',
-      })
-    } catch {
-      this.cachedProfile = await withIdenticon({
-        ...MOCK_PROFILE,
-        address,
-        source: 'mock',
-      })
-    }
+    this.cachedProfile =
+      (await this.getProfile(address)) ??
+      (await withIdenticon({ ...MOCK_PROFILE, address, source: 'mock' }))
   }
 
   async getCurrentProfile(): Promise<PublicProfile | null> {
@@ -61,8 +55,59 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
     return this.cachedProfile
   }
 
+  /** Public lookup — same call for our own address and anyone else's. */
+  async getProfile(address: string): Promise<PublicProfile | null> {
+    try {
+      const identity = await this.client.getDisplayIdentity(address)
+      return await withIdenticon({
+        address: identity.address,
+        handle: identity.handle,
+        displayName: identity.displayName,
+        bio: identity.bio,
+        source: 'nimconnect',
+      })
+    } catch {
+      return null
+    }
+  }
+
+  hasFriendsSession(): boolean {
+    return Boolean(this.client.getSessionToken())
+  }
+
+  async connectFriends(): Promise<void> {
+    await createFriendsSession(this.client)
+  }
+
+  // No session, no friends — an invented list is worse than an empty one.
   async getFriends(): Promise<PublicFriend[]> {
-    return MOCK_FRIENDS.map((f) => ({ ...f }))
+    if (!this.hasFriendsSession()) return []
+    try {
+      return await Promise.all((await this.client.listFriends()).map(toPublicFriend))
+    } catch {
+      return []
+    }
+  }
+
+  async getFriendRequests(): Promise<PublicFriend[]> {
+    if (!this.hasFriendsSession()) return []
+    return Promise.all((await this.client.listFriendRequests()).map(toPublicFriend))
+  }
+
+  async sendFriendRequest(to: string): Promise<void> {
+    await this.client.sendFriendRequest(to.trim().replace(/^@/, ''))
+  }
+
+  async acceptFriendRequest(friendshipId: string): Promise<void> {
+    await this.client.acceptFriendRequest(friendshipId)
+  }
+
+  async declineFriendRequest(friendshipId: string): Promise<void> {
+    await this.client.declineFriendRequest(friendshipId)
+  }
+
+  async removeFriend(address: string): Promise<void> {
+    await this.client.removeFriend(address)
   }
 
   async getAchievements(appId?: string): Promise<Achievement[]> {
@@ -76,7 +121,7 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   }
 
   async requestScopes(scopes: NimConnectScope[]): Promise<PermissionResult> {
-    const supported: NimConnectScope[] = ['profile:read']
+    const supported: NimConnectScope[] = ['profile:read', 'friends:read']
     const granted = scopes.filter((s) => supported.includes(s))
     const denied = scopes.filter((s) => !supported.includes(s))
     return {
@@ -84,20 +129,59 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
       denied,
       note:
         denied.length > 0
-          ? 'Friends, achievements, inventory, and messaging scopes are not available from NimConnect yet. Mock data is used instead.'
+          ? 'Achievements, inventory, and messaging scopes are not available from NimConnect yet. Mock data is used instead.'
           : undefined,
     }
   }
 
   async openProfile(handle?: string): Promise<void> {
-    const target = handle ?? this.cachedProfile?.handle
-    if (!target) return
-    window.open(`https://nimconnect.nimiqminiapps.com/@${target}`, '_blank', 'noopener,noreferrer')
+    openNimconnect(handle ?? this.cachedProfile?.handle)
   }
 
   async refresh(): Promise<void> {
     await this.initialize()
   }
+}
+
+/**
+ * Session and friends are POST/DELETE, which NimConnect only allows from
+ * origins on its ALLOW_ORIGIN list — localhost is not one. In dev we go
+ * through the Vite proxy (same-origin, no CORS); deployed NimWorld needs its
+ * own origin added to NimConnect's allow-list. `undefined` = package default.
+ */
+function nimconnectApiBase(): string | undefined {
+  const configured = import.meta.env.VITE_NIMCONNECT_API?.trim()
+  if (configured) return configured
+  return import.meta.env.DEV ? '/nimconnect-api' : undefined
+}
+
+const FRIEND_STATUS_LABEL = {
+  accepted: 'Friend on NimConnect',
+  pending_in: 'Wants to be friends',
+  pending_out: 'Request sent',
+} as const
+
+/** NimConnect knows the friendship, not the plaza presence — labels stay honest. */
+async function toPublicFriend(entry: FriendEntry): Promise<PublicFriend> {
+  const friend: PublicFriend = {
+    address: entry.address,
+    handle: entry.handle ?? '',
+    displayName: entry.displayName || entry.handle || shortAddress(entry.address),
+    statusLabel: FRIEND_STATUS_LABEL[entry.status] ?? 'Request pending',
+    presence: 'ghost',
+    friendshipId: entry.friendshipId,
+    status: entry.status,
+  }
+  try {
+    return { ...friend, avatarDataUrl: await identiconDataUrl(entry.address) }
+  } catch {
+    return friend
+  }
+}
+
+function shortAddress(address: string): string {
+  const compact = address.replace(/\s+/g, '')
+  return compact.length <= 12 ? compact : `${compact.slice(0, 8)}…`
 }
 
 async function withIdenticon(profile: PublicProfile): Promise<PublicProfile> {

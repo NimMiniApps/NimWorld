@@ -59,16 +59,45 @@ input {
   padding: 0.7rem 1rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 140ms ease, filter 140ms ease;
+  position: relative;
+  transition:
+    transform 140ms ease,
+    filter 140ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
 }
 
-.nw-btn:active {
-  transform: scale(0.98);
+.nw-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.nw-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+  filter: brightness(0.96);
+}
+
+/* Keyboard users get the same affordance the pointer gets, and then some. */
+.nw-btn:focus-visible {
+  outline: 2px solid var(--nw-cyan);
+  outline-offset: 2px;
+}
+
+.nw-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  filter: grayscale(0.3);
+  transform: none;
 }
 
 .nw-btn-primary {
   background: linear-gradient(135deg, var(--nw-gold), #ff8a3d);
   color: #1a1204;
+  box-shadow: 0 6px 18px rgba(245, 166, 35, 0.22);
+}
+
+.nw-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 10px 24px rgba(245, 166, 35, 0.38);
 }
 
 .nw-btn-secondary {
@@ -77,9 +106,29 @@ input {
   border: 1px solid rgba(88, 196, 255, 0.35);
 }
 
+.nw-btn-secondary:hover:not(:disabled) {
+  background: rgba(88, 196, 255, 0.28);
+  box-shadow: 0 8px 20px rgba(88, 196, 255, 0.2);
+}
+
 .nw-btn-ghost {
   background: transparent;
   color: var(--nw-muted);
+}
+
+.nw-btn-ghost:hover:not(:disabled) {
+  background: rgba(180, 200, 255, 0.1);
+  color: var(--nw-text);
+}
+
+/* Motion is decoration here — the colour changes still carry the state. */
+@media (prefers-reduced-motion: reduce) {
+  .nw-btn,
+  .nw-btn:hover:not(:disabled),
+  .nw-btn:active:not(:disabled) {
+    transform: none;
+    transition: filter 140ms ease, background-color 140ms ease;
+  }
 }
 
 .nw-hud-badge {

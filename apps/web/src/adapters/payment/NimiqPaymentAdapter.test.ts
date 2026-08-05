@@ -22,6 +22,15 @@ vi.mock('@nimiq/hub-api', () => ({
   default: HubApiMock,
 }))
 
+const ADDRESS = 'NQ57 7NBS GKF1 R9B8 CHF1 0P92 67VG 02FF AL5C'
+
+// Only the resolved address is faked — isNimiqPayHost still reads window.nimiqPay.
+const signedIn = vi.hoisted(() => ({ address: null as string | null }))
+vi.mock('@/auth/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/auth/session')>()),
+  getResolvedAddress: () => signedIn.address,
+}))
+
 describe('MiniAppSdkPaymentAdapter', () => {
   beforeEach(() => {
     vi.resetModules()
@@ -94,19 +103,54 @@ describe('MiniAppSdkPaymentAdapter', () => {
     expect(sendBasicTransaction).not.toHaveBeenCalled()
   })
 
-  it('copies a request link', async () => {
+  it('copies a request link addressed to the signed-in account', async () => {
     initMock.mockRejectedValue(new Error('no pay host'))
     const writeText = vi.fn().mockResolvedValue(undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
 
     const { MiniAppSdkPaymentAdapter } = await import('./NimiqPaymentAdapter')
+    signedIn.address = ADDRESS
     const adapter = new MiniAppSdkPaymentAdapter()
     await adapter.initialize()
 
     await expect(adapter.requestNim(100_000, 'NimWorld gift request')).resolves.toEqual({
       ok: true,
     })
-    expect(writeText).toHaveBeenCalledWith(expect.stringMatching(/^nimiq:\?amount=1/))
+    expect(writeText).toHaveBeenCalledWith(
+      'nimiq:NQ577NBSGKF1R9B8CHF10P9267VG02FFAL5C?amount=1&message=NimWorld+gift+request',
+    )
+  })
+
+  it('shares the request link when the host has a share sheet', async () => {
+    initMock.mockRejectedValue(new Error('no pay host'))
+    const share = vi.fn().mockResolvedValue(undefined)
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { share, clipboard: { writeText } })
+
+    const { MiniAppSdkPaymentAdapter } = await import('./NimiqPaymentAdapter')
+    signedIn.address = ADDRESS
+    const adapter = new MiniAppSdkPaymentAdapter()
+    await adapter.initialize()
+
+    await expect(adapter.requestNim(250_000)).resolves.toEqual({ ok: true })
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'nimiq:NQ577NBSGKF1R9B8CHF10P9267VG02FFAL5C?amount=2.5' }),
+    )
+    expect(writeText).not.toHaveBeenCalled()
+  })
+
+  it('refuses to build a request without an address to pay into', async () => {
+    initMock.mockRejectedValue(new Error('no pay host'))
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+
+    const { MiniAppSdkPaymentAdapter } = await import('./NimiqPaymentAdapter')
+    signedIn.address = null
+    const adapter = new MiniAppSdkPaymentAdapter()
+    await adapter.initialize()
+
+    await expect(adapter.requestNim(100_000)).resolves.toMatchObject({ ok: false })
+    expect(writeText).not.toHaveBeenCalled()
   })
 
   it('exposes a preview NIM balance until a live wallet read exists', async () => {

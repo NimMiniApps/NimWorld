@@ -13,7 +13,6 @@ describe('hudPreviewData', () => {
       xp: 8420,
       xpMax: 12500,
       trophies: 184,
-      friends: 31,
       apps: 8,
     })
   })

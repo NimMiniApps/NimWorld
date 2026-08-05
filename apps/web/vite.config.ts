@@ -38,6 +38,13 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/catalog-api/, ''),
       },
+      // NimConnect's write endpoints (session, friends) are CORS-locked to an
+      // allow-list, so a browser on localhost cannot call them directly.
+      '/nimconnect-api': {
+        target: 'https://api-nimconnect.nimiqminiapps.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nimconnect-api/, ''),
+      },
       '/auth-api': {
         target: authApiTarget,
         changeOrigin: true,

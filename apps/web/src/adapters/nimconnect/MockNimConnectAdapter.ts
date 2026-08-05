@@ -6,6 +6,7 @@ import type {
   PublicProfile,
 } from '@/domain/types'
 import type { NimConnectAdapter, PermissionResult } from './types'
+import { openNimconnect } from './links'
 import {
   MOCK_ACHIEVEMENTS,
   MOCK_FRIENDS,
@@ -24,8 +25,41 @@ export class MockNimConnectAdapter implements NimConnectAdapter {
     return { ...this.profile, source: 'mock' }
   }
 
+  async getProfile(address: string): Promise<PublicProfile | null> {
+    return { ...MOCK_PROFILE, address, source: 'mock' }
+  }
+
   async getFriends(): Promise<PublicFriend[]> {
     return MOCK_FRIENDS.map((f) => ({ ...f }))
+  }
+
+  hasFriendsSession(): boolean {
+    return false
+  }
+
+  async connectFriends(): Promise<void> {
+    // mock friends need no session
+  }
+
+  async getFriendRequests(): Promise<PublicFriend[]> {
+    return []
+  }
+
+  // Mock friendships are read-only — mutating them would fake a real social graph.
+  async sendFriendRequest(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
+  }
+
+  async acceptFriendRequest(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
+  }
+
+  async declineFriendRequest(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
+  }
+
+  async removeFriend(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
   }
 
   async getAchievements(appId?: string): Promise<Achievement[]> {
@@ -47,9 +81,7 @@ export class MockNimConnectAdapter implements NimConnectAdapter {
   }
 
   async openProfile(handle?: string): Promise<void> {
-    const target = handle ?? this.profile.handle
-    if (!target) return
-    window.open(`https://nimconnect.nimiqminiapps.com/@${target}`, '_blank', 'noopener,noreferrer')
+    openNimconnect(handle ?? this.profile.handle)
   }
 
   async refresh(): Promise<void> {

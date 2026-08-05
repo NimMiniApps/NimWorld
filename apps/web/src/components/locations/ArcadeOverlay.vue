@@ -13,8 +13,25 @@ const filtered = computed(() => {
   )
 })
 
-async function launch(app: { id: string; slug: string; launchUrl: string }) {
-  await store.launchApp(app.slug || app.id, app.launchUrl)
+async function launch(app: { id: string; slug: string; launchUrl: string; name?: string }) {
+  await store.launchApp(app.slug || app.id, app.launchUrl, app.name)
+}
+
+/** Recent launches, newest first — the plaza's own record, not a catalog field. */
+const recent = computed(() =>
+  store.launchHistory.map((entry) => ({
+    ...entry,
+    when: relativeTime(entry.launchedAt),
+  })),
+)
+
+function relativeTime(at: number): string {
+  const minutes = Math.round((Date.now() - at) / 60_000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
 }
 </script>
 
@@ -23,6 +40,22 @@ async function launch(app: { id: string; slug: string; launchUrl: string }) {
     <p class="muted">
       Scalable games portal. Seeded from manifests and the NimiqMiniApps catalog when available.
     </p>
+
+    <section v-if="recent.length" class="recent">
+      <h3 class="display heading">Recently played</h3>
+      <ul class="chips">
+        <li v-for="entry in recent" :key="entry.appId">
+          <button
+            class="chip"
+            type="button"
+            @click="store.launchApp(entry.appId, entry.launchUrl, entry.name)"
+          >
+            <span class="chip-name">{{ entry.name }}</span>
+            <span class="chip-when">{{ entry.when }}</span>
+          </button>
+        </li>
+      </ul>
+    </section>
 
     <label class="search">
       <span>Search</span>
@@ -53,6 +86,52 @@ async function launch(app: { id: string; slug: string; launchUrl: string }) {
 .muted {
   color: var(--nw-muted);
   margin: 0;
+}
+
+.recent {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.heading {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  display: grid;
+  gap: 0.1rem;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid var(--nw-panel-border);
+  background: rgba(88, 196, 255, 0.1);
+  color: var(--nw-text);
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: rgba(88, 196, 255, 0.2);
+}
+
+.chip-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.chip-when {
+  font-size: 0.68rem;
+  color: var(--nw-muted);
 }
 
 .search {

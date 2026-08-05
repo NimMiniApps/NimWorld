@@ -1,27 +1,53 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { usePlazaStore } from '@/stores/plazaStore'
 import IdenticonAvatar from './IdenticonAvatar.vue'
-import { PREVIEW_FRIENDS } from './hudPreviewData'
+
+const store = usePlazaStore()
+
+const rows = computed(() =>
+  store.friends.slice(0, 5).map((f) => ({
+    key: f.address ?? f.handle,
+    handle: f.handle ? `@${f.handle}` : f.displayName,
+    // NimConnect shares the friendship, not plaza presence.
+    place: f.statusLabel,
+    address: f.address ?? '',
+  })),
+)
+
+const pending = computed(() =>
+  store.friendRequests.filter((r) => r.status === 'pending_in').length,
+)
 </script>
 
 <template>
-  <aside class="nw-panel shell friends-shell" aria-label="Friends preview">
+  <aside class="nw-panel shell friends-shell" aria-label="Friends">
     <header class="head">
-      <h2 class="title">Friends online</h2>
-      <span class="nw-hud-badge">Preview</span>
+      <h2 class="title">Friends</h2>
+      <span v-if="pending" class="nw-hud-badge pending">{{ pending }} new</span>
     </header>
 
-    <ul class="list">
-      <li v-for="friend in PREVIEW_FRIENDS" :key="friend.handle">
+    <ul class="list" v-if="rows.length">
+      <li v-for="friend in rows" :key="friend.key">
         <IdenticonAvatar :address="friend.address" :fallback="friend.handle" size="2.1rem" />
-        <div class="meta">
+        <button
+          class="meta"
+          type="button"
+          :disabled="!friend.address"
+          @click="store.openProfileSheet(friend.address, friend.handle)"
+        >
           <p class="handle">{{ friend.handle }}</p>
           <p class="place">{{ friend.place }}</p>
-        </div>
-        <span class="dot" :class="{ on: friend.online }" aria-hidden="true" />
+        </button>
       </li>
     </ul>
+    <p v-else class="empty">
+      {{ store.friendsConnected ? 'No friends yet.' : 'Connect NimConnect to see your friends.' }}
+    </p>
 
-    <button class="view-all" type="button" disabled>View All Friends</button>
+    <button class="view-all" type="button" @click="store.openLocation('social-club')">
+      {{ store.friendsConnected ? 'View All Friends' : 'Connect Friends' }}
+    </button>
   </aside>
 </template>
 
@@ -60,12 +86,28 @@ import { PREVIEW_FRIENDS } from './hudPreviewData'
 
 .list li {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.3rem;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.meta {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Mock friends carry no address, so there is nothing to look up. */
+.meta:disabled {
+  cursor: default;
 }
 
 .handle {
@@ -80,16 +122,16 @@ import { PREVIEW_FRIENDS } from './hudPreviewData'
   color: var(--nw-muted);
 }
 
-.dot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 999px;
-  background: #5a647f;
+.empty {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--nw-muted);
+  padding: 0.2rem 0.3rem;
 }
 
-.dot.on {
-  background: var(--nw-green);
-  box-shadow: 0 0 8px rgba(79, 209, 165, 0.55);
+.pending {
+  color: var(--nw-green);
+  border-color: rgba(79, 209, 165, 0.45);
 }
 
 .view-all {
@@ -98,12 +140,15 @@ import { PREVIEW_FRIENDS } from './hudPreviewData'
   border-radius: 10px;
   border: 1px solid var(--nw-panel-border);
   background: rgba(155, 123, 255, 0.12);
-  color: var(--nw-muted);
+  color: var(--nw-text);
   padding: 0.45rem 0.6rem;
   font-size: 0.72rem;
   font-weight: 700;
-  cursor: not-allowed;
-  opacity: 0.75;
+  cursor: pointer;
+}
+
+.view-all:hover {
+  background: rgba(155, 123, 255, 0.22);
 }
 
 @media (min-width: 900px) {

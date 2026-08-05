@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { isPayableActor } from '@/adapters/presence/PresenceAdapter'
 import { usePlazaStore } from '@/stores/plazaStore'
 import IdenticonAvatar from './IdenticonAvatar.vue'
 
 const store = usePlazaStore()
 const expanded = ref(false)
+
+// NPCs are scenery, not people — listing them here reads as fake players.
+const players = computed(() => store.nearbyActors.filter((a) => a.kind !== 'npc'))
 
 function sendTo(actor: { label: string; address?: string }) {
   if (!actor.address) return
@@ -18,19 +21,24 @@ function sendTo(actor: { label: string; address?: string }) {
 </script>
 
 <template>
-  <div class="nearby nw-panel" v-if="store.nearbyActors.length">
+  <div class="nearby nw-panel" v-if="players.length">
     <button class="toggle" type="button" @click="expanded = !expanded">
       <span>Nearby</span>
-      <span class="count">{{ store.nearbyActors.length }}</span>
+      <span class="count">{{ players.length }}</span>
     </button>
 
     <ul v-if="expanded">
-      <li v-for="actor in store.nearbyActors" :key="actor.id">
+      <li v-for="actor in players" :key="actor.id">
         <IdenticonAvatar :address="actor.address" :fallback="actor.label" size="1.9rem" />
-        <div class="meta">
+        <button
+          class="meta"
+          type="button"
+          :disabled="!actor.address"
+          @click="store.openProfileSheet(actor.address ?? '', actor.label)"
+        >
           <p class="label">{{ actor.label }}</p>
           <p class="status">{{ actor.statusLabel }}</p>
-        </div>
+        </button>
         <button
           v-if="isPayableActor(actor)"
           class="nw-btn nw-btn-secondary send"
@@ -95,6 +103,18 @@ li {
 .meta {
   flex: 1;
   min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Ghosts and NPCs have no address to look up — they just read as plain text. */
+.meta:disabled {
+  cursor: default;
 }
 
 .label {

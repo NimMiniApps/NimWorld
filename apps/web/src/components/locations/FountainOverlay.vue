@@ -17,8 +17,9 @@ onMounted(async () => {
 <template>
   <div class="stack">
     <p class="lead">
-      Your identity hub. Public profile comes from NimConnect when available; friends,
-      achievements, and inventory below are labelled mock data until those APIs exist.
+      Your identity hub. Public profile comes from NimConnect when available (friends too,
+      once connected in the Social Club); achievements and inventory below are labelled mock
+      data until those APIs exist.
     </p>
 
     <div class="identity" v-if="store.profile">
@@ -31,12 +32,13 @@ onMounted(async () => {
     </div>
 
     <div class="actions">
+      <!-- No handle means no profile page to open — offer to create one instead. -->
       <button
         class="nw-btn nw-btn-primary"
         type="button"
         @click="store.openNimConnectProfile(store.profile?.handle)"
       >
-        View profile
+        {{ store.profile?.handle ? 'View profile' : 'Create your NimConnect profile' }}
       </button>
       <button class="nw-btn nw-btn-secondary" type="button" @click="store.openPaymentSheet({ mode: 'tip' })">
         Tip NimWorld
