@@ -100,33 +100,9 @@ export class LocalPresenceAdapter implements PresenceAdapter {
         color: 0xf5c542,
         sheet: 'e',
       },
-      {
-        id: 'ghost-luna',
-        label: '@luna',
-        kind: 'ghost',
-        statusLabel: 'Active 12 min ago',
-        position: { x: 540, y: 250 },
-        color: 0xffd166,
-        address: 'NQ11 LUNA DEMO 0000 0000 0000 0000 0000 0000',
-      },
-      {
-        id: 'ghost-pixel',
-        label: '@pixel',
-        kind: 'ghost',
-        statusLabel: 'Recently visited',
-        position: { x: 620, y: 500 },
-        color: 0xff8fab,
-        address: 'NQ22 PIXL DEMO 0000 0000 0000 0000 0000 0000',
-      },
-      {
-        id: 'ghost-nova',
-        label: '@nova',
-        kind: 'ghost',
-        statusLabel: 'Friend · Playing NimBomber',
-        position: { x: 300, y: 450 },
-        color: 0x7cf5c8,
-        address: 'NQ33 NOVA DEMO 0000 0000 0000 0000 0000 0000',
-      },
     ]
+    // The @luna/@pixel/@nova ghosts lived here with invented "NQ11 LUNA DEMO…"
+    // addresses, so the HUD offered a Send button that would pay nobody.
+    // Real absent players belong to Phase 3 presence, not to a fixture.
   }
 }

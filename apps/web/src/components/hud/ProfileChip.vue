@@ -7,6 +7,9 @@ import { HUD_ICON, PREVIEW_PROFILE_STATS } from './hudPreviewData'
 const store = usePlazaStore()
 const stats = PREVIEW_PROFILE_STATS
 const xpPct = computed(() => Math.min(100, (stats.xp / stats.xpMax) * 100))
+
+// Friends are the one real stat here — the rest stay preview until they have a source.
+const friendCount = computed(() => store.friends.length)
 </script>
 
 <template>
@@ -32,9 +35,13 @@ const xpPct = computed(() => Math.min(100, (stats.xp / stats.xpMax) * 100))
           <img :src="HUD_ICON.achievements" alt="" class="stat-icon" />
           {{ stats.trophies }}
         </span>
-        <span class="stat" title="Friends (preview)">
+        <span
+          class="stat"
+          :class="{ live: store.friendsConnected }"
+          :title="store.friendsConnected ? 'Friends on NimConnect' : 'Friends (preview)'"
+        >
           <img :src="HUD_ICON.friends" alt="" class="stat-icon" />
-          {{ stats.friends }}
+          {{ friendCount }}
         </span>
         <span class="stat" title="Apps (preview)">
           <img :src="HUD_ICON.apps" alt="" class="stat-icon" />
@@ -130,6 +137,10 @@ const xpPct = computed(() => Math.min(100, (stats.xp / stats.xpMax) * 100))
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--nw-text);
+}
+
+.stat.live {
+  color: var(--nw-green);
 }
 
 .stat-icon {

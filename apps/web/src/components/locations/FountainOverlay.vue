@@ -17,8 +17,9 @@ onMounted(async () => {
 <template>
   <div class="stack">
     <p class="lead">
-      Your identity hub. Public profile comes from NimConnect when available; friends,
-      achievements, and inventory below are labelled mock data until those APIs exist.
+      Your identity hub. Public profile comes from NimConnect when available (friends too,
+      once connected in the Social Club); achievements and inventory below are labelled mock
+      data until those APIs exist.
     </p>
 
     <div class="identity" v-if="store.profile">

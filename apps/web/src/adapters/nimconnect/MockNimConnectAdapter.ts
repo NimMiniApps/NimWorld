@@ -28,6 +28,35 @@ export class MockNimConnectAdapter implements NimConnectAdapter {
     return MOCK_FRIENDS.map((f) => ({ ...f }))
   }
 
+  hasFriendsSession(): boolean {
+    return false
+  }
+
+  async connectFriends(): Promise<void> {
+    // mock friends need no session
+  }
+
+  async getFriendRequests(): Promise<PublicFriend[]> {
+    return []
+  }
+
+  // Mock friendships are read-only — mutating them would fake a real social graph.
+  async sendFriendRequest(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
+  }
+
+  async acceptFriendRequest(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
+  }
+
+  async declineFriendRequest(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
+  }
+
+  async removeFriend(): Promise<void> {
+    throw new Error('Connect NimConnect to manage friends')
+  }
+
   async getAchievements(appId?: string): Promise<Achievement[]> {
     return MOCK_ACHIEVEMENTS.filter((a) => !appId || a.appId === appId).map((a) => ({ ...a }))
   }

@@ -25,6 +25,7 @@ const gameReady = ref(false)
 
 const bootStatus = computed(() => {
   if (!sessionResolved.value) return 'Connecting…'
+  if (store.friendsBusy) return 'Connecting friends — approve the signature'
   if (store.loading) return 'Opening the plaza…'
   if (!gameReady.value) return 'Loading the world…'
   return 'Ready'

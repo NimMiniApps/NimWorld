@@ -49,11 +49,19 @@ export interface PublicProfile {
   source: 'nimconnect' | 'mock'
 }
 
+export type FriendStatus = 'accepted' | 'pending_out' | 'pending_in'
+
 export interface PublicFriend {
+  /** Absent for mock friends; present for real NimConnect friends. */
+  address?: string
   handle: string
   displayName: string
   statusLabel: string
   presence: PresenceKind
+  avatarDataUrl?: string
+  /** Needed to accept/decline a pending request. Real friends only. */
+  friendshipId?: string
+  status?: FriendStatus
 }
 
 export interface Achievement {

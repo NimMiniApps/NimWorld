@@ -17,7 +17,7 @@ Source: `prompt.md` (product/technical spec) + `docs/architecture.md` (current i
 
 ## Gap this roadmap covers
 
-- NimConnect friends, achievements, inventory — still mock (only profile is real). **Blocked upstream:** NimConnect exposes no production API for these, as `requestScopes` states. Do not plan work that assumes them.
+- NimConnect achievements and inventory — still mock. **Blocked upstream:** NimConnect exposes no production API for these, as `requestScopes` states. Do not plan work that assumes them. (Friends are real since profile-client 0.6.0.)
 - `requestNim` only copies a `nimiq:` link to the clipboard; there is no real request flow
 - No real presence (WebSocket) — architecture.md: "not implemented, local ghosts/NPCs only"
 - `apps/api` covers auth only — world config, manifests, presence, signed events, and rate limiting from spec §6 are not started
@@ -36,7 +36,7 @@ Sequenced for the earliest compelling, demoable milestone — real platform loop
 **Done when:** a user can open NimWorld inside Nimiq Pay, authenticate with real NimConnect, walk the plaza, inspect real profile data, and launch NimBomber (or another Mini App) before returning seamlessly to the plaza.
 
 - ~~Real Nimiq Mini App environment initialization~~
-- Real NimConnect profile wiring — done. Scopes beyond `profile:read` are blocked upstream and belong to Phase 4.
+- Real NimConnect profile wiring — done. `friends:read` landed with profile-client 0.6.0; the remaining scopes are blocked upstream and belong to Phase 4.
 - ~~Real NimiqMiniApps catalog integration (replace/augment manifest fallback)~~ — connected-app state still outstanding, folded into Phase 4
 - ~~Real `AppLauncher` navigation (NimBomber) + return-state restoration end to end~~
 
@@ -48,7 +48,7 @@ Sequenced for the earliest compelling, demoable milestone — real platform loop
 - Public profile inspection panel (another user's NimConnect profile) — **the actionable item.** `getDisplayIdentity` takes any address and the ghosts in `LocalPresenceAdapter` already carry one.
 - A real request-NIM flow, replacing the clipboard `nimiq:` link
 - App launch history surfaced in UI
-- Real friends/contacts data + friend profile cards — **blocked upstream**, no NimConnect API. Deferred, not scheduled.
+- ~~Real friends/contacts data~~ — done via profile-client 0.6.0 (`listFriends` behind a NimConnect session, connected from the Social Club). Friend requests (send/accept/decline/remove) and friend profile cards are still open.
 
 Research before building: Nimiq Pay request-NIM flow, NimConnect public-field permissions.
 

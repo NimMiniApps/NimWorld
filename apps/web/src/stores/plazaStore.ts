@@ -5,8 +5,19 @@ import type { PlazaActor } from '@/adapters/presence/PresenceAdapter'
 import { NIMWORLD_TIP_ADDRESS, nimToLuna } from '@/adapters/payment/paymentConfig'
 import { fetchLiveBalanceNim } from '@/adapters/payment/balanceApi'
 import { getResolvedAddress } from '@/auth/session'
+import {
+  shouldAutoConnectFriends,
+  skipAutoConnectFriends,
+} from '@/adapters/nimconnect/friendsSession'
 import { loadPlazaPosition, savePlazaPosition } from '@/adapters/launcher/AppLauncher'
-import type { ArenaStatus, CatalogApp, InteractionTarget, PublicProfile, WorldPosition } from '@/domain/types'
+import type {
+  ArenaStatus,
+  CatalogApp,
+  InteractionTarget,
+  PublicFriend,
+  PublicProfile,
+  WorldPosition,
+} from '@/domain/types'
 import { nimbomberManifest, playnimiqManifest } from '@nimworld/app-manifest'
 
 export type PaymentMode = 'tip' | 'send' | 'request'
@@ -37,6 +48,11 @@ export const usePlazaStore = defineStore('plaza', () => {
   const paymentBusy = ref(false)
   const balanceNim = ref<number | null>(null)
   const balanceIsPreview = ref(true)
+  const friends = ref<PublicFriend[]>([])
+  const friendRequests = ref<PublicFriend[]>([])
+  /** False while `friends` is still the mock list. */
+  const friendsConnected = ref(false)
+  const friendsBusy = ref(false)
 
   let adapters: AppAdapters | null = null
 
@@ -65,6 +81,8 @@ export const usePlazaStore = defineStore('plaza', () => {
       profile.value = await adapters.nimconnect.getCurrentProfile()
       featuredApps.value = await adapters.catalog.getFeaturedApps()
       nearbyActors.value = await adapters.presence.getActors()
+      await loadFriends()
+      await autoConnectFriends()
       await refreshBalance()
       const games = await adapters.catalog.getApps()
       const fromCatalog = games.filter((a) =>
@@ -235,6 +253,56 @@ export const usePlazaStore = defineStore('plaza', () => {
     balanceIsPreview.value = true
   }
 
+  async function loadFriends() {
+    if (!adapters) return
+    friendsConnected.value = adapters.nimconnect.hasFriendsSession()
+    friends.value = await adapters.nimconnect.getFriends()
+    friendRequests.value = friendsConnected.value
+      ? await adapters.nimconnect.getFriendRequests()
+      : []
+  }
+
+  /**
+   * Every friends mutation routes through here so the HUD and the Social Club
+   * panel can never disagree about the list. Rethrows so callers can show why.
+   */
+  async function runFriendAction(action: (a: AppAdapters) => Promise<void>) {
+    if (!adapters) return
+    friendsBusy.value = true
+    try {
+      await action(adapters)
+      await loadFriends()
+    } finally {
+      friendsBusy.value = false
+    }
+  }
+
+  const connectFriends = () => runFriendAction((a) => a.nimconnect.connectFriends())
+
+  /**
+   * Friends come with the login signature instead of a second, separate one.
+   * A refusal or a network failure is remembered for the tab, so the Social
+   * Club's Connect button stays the way back in.
+   */
+  async function autoConnectFriends() {
+    if (!shouldAutoConnectFriends()) return
+    skipAutoConnectFriends() // one attempt per load, whatever the outcome
+    try {
+      await connectFriends()
+    } catch {
+      // Declined or unreachable: the Social Club's Connect button is the way back.
+    }
+  }
+
+  const sendFriendRequest = (to: string) =>
+    runFriendAction((a) => a.nimconnect.sendFriendRequest(to))
+  const acceptFriendRequest = (id: string) =>
+    runFriendAction((a) => a.nimconnect.acceptFriendRequest(id))
+  const declineFriendRequest = (id: string) =>
+    runFriendAction((a) => a.nimconnect.declineFriendRequest(id))
+  const removeFriend = (address: string) =>
+    runFriendAction((a) => a.nimconnect.removeFriend(address))
+
   async function openNimConnectProfile(handle?: string) {
     if (!adapters) return
     await adapters.nimconnect.openProfile(handle)
@@ -269,6 +337,10 @@ export const usePlazaStore = defineStore('plaza', () => {
     paymentBusy,
     balanceNim,
     balanceIsPreview,
+    friends,
+    friendRequests,
+    friendsConnected,
+    friendsBusy,
     setAdapters,
     bootstrap,
     setInteraction,
@@ -281,6 +353,12 @@ export const usePlazaStore = defineStore('plaza', () => {
     closePaymentSheet,
     submitPayment,
     refreshBalance,
+    loadFriends,
+    connectFriends,
+    sendFriendRequest,
+    acceptFriendRequest,
+    declineFriendRequest,
+    removeFriend,
     openNimConnectProfile,
     loadFountainExtras,
   }
