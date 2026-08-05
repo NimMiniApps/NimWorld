@@ -6,67 +6,55 @@ vi.mock('@/auth/session', () => ({
   isNimiqPayHost: () => false,
 }))
 
-const store = new Map<string, string>()
+const signMessage = vi.fn()
+vi.mock('@nimiq/hub-api', () => ({
+  default: vi.fn().mockImplementation(() => ({ signMessage })),
+}))
 
-/** Fresh module per test — auto-connect state is per page load, not persisted. */
 async function load() {
   vi.resetModules()
   return import('./friendsSession')
 }
 
-describe('friends session auto-connect', () => {
+describe('friends scoped authorization', () => {
   beforeEach(() => {
-    store.clear()
     address = 'NQ17 VERV F3MQ 283T'
-    vi.stubGlobal('sessionStorage', {
-      getItem: (k: string) => store.get(k) ?? null,
-      setItem: (k: string, v: string) => store.set(k, v),
-      removeItem: (k: string) => store.delete(k),
+    signMessage.mockReset().mockResolvedValue({
+      signerPublicKey: new Uint8Array([1, 2]),
+      signature: new Uint8Array([3, 4]),
     })
+    vi.stubGlobal('indexedDB', undefined)
   })
 
-  it('connects at login when there is an address and no token', async () => {
-    const { shouldAutoConnectFriends } = await load()
-    expect(shouldAutoConnectFriends()).toBe(true)
-  })
-
-  it('asks only once per page load', async () => {
-    const { shouldAutoConnectFriends, skipAutoConnectFriends } = await load()
-    skipAutoConnectFriends()
-    expect(shouldAutoConnectFriends()).toBe(false)
-  })
-
-  it('asks again after a reload, so a failed attempt is not permanent', async () => {
-    const first = await load()
-    first.skipAutoConnectFriends()
-    expect(first.shouldAutoConnectFriends()).toBe(false)
-
-    const reloaded = await load()
-    expect(reloaded.shouldAutoConnectFriends()).toBe(true)
+  it('auto-connects once when a wallet is available', async () => {
+    const session = await load()
+    await expect(session.shouldAutoConnectFriends()).resolves.toBe(true)
+    session.skipAutoConnectFriends()
+    await expect(session.shouldAutoConnectFriends()).resolves.toBe(false)
   })
 
   it('does not prompt without a wallet address', async () => {
     address = null
     const { shouldAutoConnectFriends } = await load()
-    expect(shouldAutoConnectFriends()).toBe(false)
+    await expect(shouldAutoConnectFriends()).resolves.toBe(false)
   })
 
-  it('does not prompt while a valid token is stored', async () => {
-    store.set(
-      'nimworld:nimconnect-session',
-      JSON.stringify({ token: 't', expiresAt: Math.floor(Date.now() / 1000) + 600 }),
-    )
-    const { shouldAutoConnectFriends } = await load()
-    expect(shouldAutoConnectFriends()).toBe(false)
-  })
-
-  it('treats an expired token as no session and clears it', async () => {
-    store.set(
-      'nimworld:nimconnect-session',
-      JSON.stringify({ token: 't', expiresAt: Math.floor(Date.now() / 1000) - 1 }),
-    )
-    const { shouldAutoConnectFriends } = await load()
-    expect(shouldAutoConnectFriends()).toBe(true)
-    expect(store.has('nimworld:nimconnect-session')).toBe(false)
+  it('requests only NimWorld friends scopes and reuses the stored grant', async () => {
+    const grant = {
+      token: 'token', address: 'NQ17 VERV F3MQ 283T', audience: 'nimworld',
+      scopes: ['friends:read', 'friends:write'], expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    }
+    const client = { createAuthorization: vi.fn().mockImplementation(async ({ signMessage: sign }: { signMessage: (m: string) => Promise<unknown> }) => {
+      await sign('canonical-v3-message')
+      return grant
+    }) }
+    const session = await load()
+    await expect(session.createFriendsAuthorization(client as never)).resolves.toEqual(grant)
+    await expect(session.createFriendsAuthorization(client as never)).resolves.toEqual(grant)
+    expect(client.createAuthorization).toHaveBeenCalledTimes(1)
+    expect(client.createAuthorization).toHaveBeenCalledWith(expect.objectContaining({
+      address, scopes: ['friends:read', 'friends:write'],
+    }))
+    expect(signMessage).toHaveBeenCalledWith(expect.objectContaining({ message: 'canonical-v3-message', signer: address }))
   })
 })
