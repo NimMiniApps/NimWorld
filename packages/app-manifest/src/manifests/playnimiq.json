@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "playnimiq",
+  "name": "PlayNimiq",
+  "description": "Skill-based games with Nimiq wallet identity and rewards.",
+  "category": "game",
+  "iconUrl": "https://playnimiq.com/images/nimiq-2048-game-logo.png",
+  "launchUrl": "https://playnimiq.com",
+  "capabilities": ["identity", "stats", "leaderboards", "challenges"],
+  "nimconnect": {
+    "requestedScopes": ["profile:read"]
+  },
+  "world": {
+    "locationType": "arcade",
+    "district": "games",
+    "interactionLabel": "Open Arcade",
+    "featured": true
+  }
+}

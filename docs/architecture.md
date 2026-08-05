@@ -19,7 +19,8 @@ Vue HUD / overlays  <── WorldBridge ──>  Phaser plaza
 | Path | Role |
 |------|------|
 | `apps/web` | Vue + Phaser mini app |
-| `packages/app-manifest` | Versioned manifest types, JSON Schema, validation |
+| `packages/app-manifest` | Versioned manifest types, JSON Schema, validation, and the manifest JSON the API serves |
+| `apps/api` | Go: auth, balance proxy, presence WebSocket, world config, app registry |
 
 ## Integrations
 
@@ -31,7 +32,9 @@ Vue HUD / overlays  <── WorldBridge ──>  Phaser plaza
 | Mini App SDK (embedded Pay) | `init` + `listAccounts` → `resolvedAddress`; Hub login only outside Pay |
 | App launch / return | Hybrid: Pay `location.assign`, browser `window.open`; `returnUrl` includes `returnedFrom=<appId>` |
 | Mini App SDK payments | Hybrid: Pay `sendBasicTransaction`; desktop Hub `checkout`; tip jar + Nearby send + request-link |
-| Presence WebSocket | `apps/api` `/presence` (cookie session); client merges live peers + local NPCs/ghosts; falls back when WS unavailable |
+| Presence WebSocket | `apps/api` `/presence` (cookie session, origin-checked); client merges live peers + local NPCs/ghosts; falls back when WS unavailable |
+| World config | `apps/api` `/world` → tip address; client falls back to the compiled default |
+| App registry | `apps/api` `/apps` serves `packages/app-manifest/src/manifests/*.json`; catalog chain is public API → registry → bundled |
 
 ## Bridge events
 

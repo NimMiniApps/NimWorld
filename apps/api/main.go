@@ -19,6 +19,8 @@ type server struct {
 	cookieSecure bool
 	allowOrigin  string
 	hub          *plazaHub
+	tipAddress   string
+	manifests    []json.RawMessage
 }
 
 type challengeResponse struct {
@@ -54,15 +56,25 @@ func main() {
 		cookieSecure: os.Getenv("COOKIE_INSECURE") == "",
 		allowOrigin:  os.Getenv("ALLOW_ORIGIN"),
 		hub:          newPlazaHub(),
+		tipAddress:   configuredTipAddress(),
+		manifests:    loadManifests(manifestDir()),
 	}
+	log.Printf("serving %d app manifest(s)", len(s.manifests))
+
+	// Signature checks and the RPC proxy are the expensive, unauthenticated
+	// paths; reads of static config get a looser ceiling.
+	auth := newRateLimiter(10, 1)
+	reads := newRateLimiter(60, 10)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/auth/challenge", s.withCORS(s.handleChallenge))
-	mux.HandleFunc("/auth/verify", s.withCORS(s.handleVerify))
-	mux.HandleFunc("/auth/me", s.withCORS(s.handleMe))
+	mux.HandleFunc("/auth/challenge", s.withCORS(auth.limit(s.handleChallenge)))
+	mux.HandleFunc("/auth/verify", s.withCORS(auth.limit(s.handleVerify)))
+	mux.HandleFunc("/auth/me", s.withCORS(reads.limit(s.handleMe)))
 	mux.HandleFunc("/auth/logout", s.withCORS(s.handleLogout))
 	mux.HandleFunc("/presence", s.withCORS(s.handlePresence))
-	mux.HandleFunc("/balance", s.withCORS(s.handleBalance))
+	mux.HandleFunc("/balance", s.withCORS(auth.limit(s.handleBalance)))
+	mux.HandleFunc("/world", s.withCORS(reads.limit(s.handleWorld)))
+	mux.HandleFunc("/apps", s.withCORS(reads.limit(s.handleApps)))
 
 	port := os.Getenv("PORT")
 	if port == "" {

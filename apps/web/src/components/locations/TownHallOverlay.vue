@@ -12,7 +12,8 @@ function openCatalog() {
   <div class="stack">
     <p class="muted">
       Featured Mini Apps from the NimiqMiniApps catalog
-      <template v-if="store.catalogSource === 'fallback'"> (local fallback)</template>.
+      <template v-if="store.catalogSource === 'world'"> (NimWorld registry)</template>
+      <template v-else-if="store.catalogSource === 'fallback'"> (local fallback)</template>.
     </p>
 
     <ul>

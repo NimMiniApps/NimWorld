@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { AppAdapters } from '@/adapters/createAdapters'
+import type { CatalogSource } from '@/adapters/catalog/MiniAppCatalogAdapter'
+import { fetchWorldConfig, FALLBACK_WORLD_CONFIG, type WorldConfig } from '@/adapters/world/worldConfig'
 import type { PlazaActor } from '@/adapters/presence/PresenceAdapter'
-import { NIMWORLD_TIP_ADDRESS, nimToLuna } from '@/adapters/payment/paymentConfig'
+import { nimToLuna } from '@/adapters/payment/paymentConfig'
 import { fetchLiveBalanceNim } from '@/adapters/payment/balanceApi'
 import { getResolvedAddress } from '@/auth/session'
 import {
@@ -50,7 +52,7 @@ export const usePlazaStore = defineStore('plaza', () => {
   const featuredApps = ref<CatalogApp[]>([])
   const arcadeApps = ref<CatalogApp[]>([])
   const arenaStatus = ref<ArenaStatus | null>(null)
-  const catalogSource = ref<'live' | 'fallback'>('fallback')
+  const catalogSource = ref<CatalogSource>('fallback')
   const loading = ref(true)
   const error = ref<string | null>(null)
   const lastPosition = ref<WorldPosition | null>(loadPlazaPosition())
@@ -67,6 +69,7 @@ export const usePlazaStore = defineStore('plaza', () => {
   const friendsBusy = ref(false)
   const profileSheet = ref<ProfileSheetState | null>(null)
   const launchHistory = ref<LaunchHistoryEntry[]>([])
+  const worldConfig = ref<WorldConfig>(FALLBACK_WORLD_CONFIG)
 
   let adapters: AppAdapters | null = null
 
@@ -96,6 +99,7 @@ export const usePlazaStore = defineStore('plaza', () => {
       featuredApps.value = await adapters.catalog.getFeaturedApps()
       nearbyActors.value = await adapters.presence.getActors()
       launchHistory.value = adapters.launcher.getHistory()
+      worldConfig.value = await fetchWorldConfig()
       await loadFriends()
       await autoConnectFriends()
       await refreshBalance()
@@ -189,7 +193,8 @@ export const usePlazaStore = defineStore('plaza', () => {
       paymentSheet.value = {
         open: true,
         mode: 'tip',
-        recipient: NIMWORLD_TIP_ADDRESS,
+        // Server-owned so the jar can move without a client release.
+        recipient: worldConfig.value.tipAddress,
         recipientLabel: 'NimWorld tip jar',
       }
       return
@@ -378,6 +383,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     friendsBusy,
     profileSheet,
     launchHistory,
+    worldConfig,
     setAdapters,
     bootstrap,
     setInteraction,

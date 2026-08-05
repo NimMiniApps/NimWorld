@@ -1,6 +1,9 @@
 import type { CatalogApp } from '@/domain/types'
 import { mockManifests } from '@nimworld/app-manifest'
 
+/** Where the app list came from, best first. */
+export type CatalogSource = 'live' | 'world' | 'fallback'
+
 export interface MiniAppCatalogAdapter {
   initialize(): Promise<void>
   getFeaturedApps(): Promise<CatalogApp[]>
@@ -34,8 +37,19 @@ function mapApiApp(app: ApiApp): CatalogApp {
   }
 }
 
-function manifestFallback(): CatalogApp[] {
-  return mockManifests.map((m) => ({
+/** Shape of a manifest, whether it was bundled or served by our own API. */
+interface ManifestLike {
+  id: string
+  name: string
+  description?: string
+  category: string
+  iconUrl?: string
+  launchUrl: string
+  world?: { featured?: boolean }
+}
+
+function fromManifests(manifests: ManifestLike[]): CatalogApp[] {
+  return manifests.map((m) => ({
     id: m.id,
     slug: m.id,
     name: m.name,
@@ -47,9 +61,23 @@ function manifestFallback(): CatalogApp[] {
   }))
 }
 
+/**
+ * Manifests from our own API. It serves the same files the client bundles, so
+ * this only differs once an app is added server-side — which is the point: no
+ * client rebuild to list a new Mini App.
+ */
+async function worldApiManifests(): Promise<CatalogApp[]> {
+  const res = await fetch('/auth-api/apps')
+  if (!res.ok) throw new Error(`world apps ${res.status}`)
+  const body = (await res.json()) as { apps?: ManifestLike[] }
+  const apps = fromManifests(body.apps ?? [])
+  if (!apps.length) throw new Error('world apps empty')
+  return apps
+}
+
 export class HttpMiniAppCatalogAdapter implements MiniAppCatalogAdapter {
   private cache: CatalogApp[] = []
-  private source: 'live' | 'fallback' = 'fallback'
+  private source: CatalogSource = 'fallback'
 
   constructor(private readonly baseUrl = '/catalog-api') {}
 
@@ -65,8 +93,16 @@ export class HttpMiniAppCatalogAdapter implements MiniAppCatalogAdapter {
       const list = Array.isArray(data) ? data : data.apps
       this.cache = list.map(mapApiApp)
       this.source = 'live'
+      return
     } catch {
-      this.cache = manifestFallback()
+      // Public catalog unreachable — try our own registry before the bundle.
+    }
+
+    try {
+      this.cache = await worldApiManifests()
+      this.source = 'world'
+    } catch {
+      this.cache = fromManifests(mockManifests)
       this.source = 'fallback'
     }
   }

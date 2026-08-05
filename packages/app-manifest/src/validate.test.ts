@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nimbomberManifest } from './mocks'
+import { mockManifests, nimbomberManifest } from './mocks'
 import { validateAppManifest } from './validate'
 
 describe('validateAppManifest', () => {
@@ -9,6 +9,12 @@ describe('validateAppManifest', () => {
     if (result.ok) {
       expect(result.manifest.id).toBe('nimbomber')
     }
+  })
+
+  // The manifests are JSON now, cast rather than type-checked, and the Go API
+  // serves the same files — so every shipped one goes through the validator.
+  it.each(mockManifests.map((m) => [m.id, m] as const))('ships a valid %s.json', (_id, manifest) => {
+    expect(validateAppManifest(manifest).ok).toBe(true)
   })
 
   it('rejects unsupported schema versions gracefully', () => {

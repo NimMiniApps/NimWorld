@@ -4,10 +4,15 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
 )
+
+// A join carries a label plus two coordinates; a move carries two.
+const presenceMaxFrameBytes = 1024
 
 type presencePeer struct {
 	ID    string  `json:"id"`
@@ -34,8 +39,19 @@ func newPlazaHub() *plazaHub {
 	return &plazaHub{clients: make(map[string]*presenceClient)}
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
+// The session cookie rides along on a cross-site WebSocket handshake, so
+// without an origin check any page could open an authenticated plaza socket
+// for a logged-in visitor. Same-origin and the configured ALLOW_ORIGIN only.
+func (s *server) checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true // non-browser client; the session cookie still gates it
+	}
+	if s.allowOrigin != "" && origin == s.allowOrigin {
+		return true
+	}
+	u, err := url.Parse(origin)
+	return err == nil && strings.EqualFold(u.Host, r.Host)
 }
 
 func (s *server) handlePresence(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +60,8 @@ func (s *server) handlePresence(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not logged in", http.StatusUnauthorized)
 		return
 	}
+
+	upgrader := websocket.Upgrader{CheckOrigin: s.checkOrigin}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -65,10 +83,18 @@ func (s *server) handlePresence(w http.ResponseWriter, r *http.Request) {
 		_ = conn.Close()
 	}()
 
+	// Frames are two coordinates and a label; anything larger is not presence.
+	conn.SetReadLimit(presenceMaxFrameBytes)
+	// The client publishes at ~10 Hz, so this only bites on a misbehaving one.
+	moves := newRateLimiter(30, 20)
+
 	for {
 		_, data, err := conn.ReadMessage()
 		if err != nil {
 			return
+		}
+		if !moves.allow(address) {
+			continue
 		}
 		var msg map[string]any
 		if err := json.Unmarshal(data, &msg); err != nil {

@@ -18,8 +18,7 @@ Source: `prompt.md` (product/technical spec) + `docs/architecture.md` (current i
 ## Gap this roadmap covers
 
 - NimConnect achievements and inventory — still mock. **Blocked upstream:** NimConnect exposes no production API for these, as `requestScopes` states. Do not plan work that assumes them. (Friends are real since profile-client 0.6.0.)
-- No real presence (WebSocket) — architecture.md: "not implemented, local ghosts/NPCs only"
-- `apps/api` covers auth only — world config, manifests, presence, signed events, and rate limiting from spec §6 are not started
+- `apps/api` has no signed-event mechanism yet (spec §6); achievements/inventory writes have no trusted path
 - No accessibility pass, no e2e tests, no sound controls, no perf-optimization pass
 - `docs/adding-an-app.md` is a stub
 
@@ -54,8 +53,8 @@ Research before building: Nimiq Pay request-NIM flow, NimConnect public-field pe
 
 **Done when:** the plaza feels alive through real presence and recent activity, not just static NPCs/ghosts.
 
-- Extend the Go `apps/api` beyond auth — world config, manifests, presence, rate limiting
-- WebSocket presence channel + client `PresenceAdapter` wired to real data
+- ~~Extend the Go `apps/api` beyond auth — world config, manifests, presence, rate limiting~~ — done. `/world` serves the tip address, `/apps` serves the shared manifest JSON (catalog chain: public API → registry → bundled), IP token buckets guard the signature and RPC paths, and the presence socket now checks Origin instead of accepting any (a cross-site page could previously open an authenticated socket).
+- ~~WebSocket presence channel + client `PresenceAdapter` wired to real data~~
 - Recently-active fallback + accurate status labels (Online / Playing X / Active Nm ago / NPC)
 - Signed app events groundwork (trusted-write mechanism, no client-side award path)
 
