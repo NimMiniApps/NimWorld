@@ -49,14 +49,14 @@ Sequenced for the earliest compelling, demoable milestone — real platform loop
 
 Research before building: Nimiq Pay request-NIM flow, NimConnect public-field permissions.
 
-## Phase 3 — Living Plaza
+## Phase 3 — Living Plaza — **done**
 
 **Done when:** the plaza feels alive through real presence and recent activity, not just static NPCs/ghosts.
 
 - ~~Extend the Go `apps/api` beyond auth — world config, manifests, presence, rate limiting~~ — done. `/world` serves the tip address, `/apps` serves the shared manifest JSON (catalog chain: public API → registry → bundled), IP token buckets guard the signature and RPC paths, and the presence socket now checks Origin instead of accepting any (a cross-site page could previously open an authenticated socket).
 - ~~WebSocket presence channel + client `PresenceAdapter` wired to real data~~
-- Recently-active fallback + accurate status labels (Online / Playing X / Active Nm ago / NPC)
-- Signed app events groundwork (trusted-write mechanism, no client-side award path)
+- ~~Recently-active fallback + accurate status labels (Online / Playing X / Active Nm ago / NPC)~~ — done. The hub remembers departed players for 30 min and serves them in the join snapshot; they render as ghosts where they left off. Launching a Mini App publishes `activity`, so the ghost reads "Playing NimBomber".
+- ~~Signed app events groundwork (trusted-write mechanism, no client-side award path)~~ — done. `POST /events` verifies an HMAC-SHA256 over the raw body against a per-app secret (`APP_KEYS`), with a 5-minute freshness window; the app id comes from the signing header, not the body. Reads are session-scoped to your own events. No secret ever reaches the browser, so a client cannot write. Storage is an in-memory ring — Phase 4 replaces it when events must survive a restart.
 
 Research before building: Go backend service structure for this repo, WebSocket presence design, signed-event scheme, rate-limiting approach.
 

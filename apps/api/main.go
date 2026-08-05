@@ -21,6 +21,8 @@ type server struct {
 	hub          *plazaHub
 	tipAddress   string
 	manifests    []json.RawMessage
+	appKeys      map[string]string
+	events       *eventStore
 }
 
 type challengeResponse struct {
@@ -58,8 +60,11 @@ func main() {
 		hub:          newPlazaHub(),
 		tipAddress:   configuredTipAddress(),
 		manifests:    loadManifests(manifestDir()),
+		appKeys:      appKeys(),
+		events:       newEventStore(),
 	}
 	log.Printf("serving %d app manifest(s)", len(s.manifests))
+	log.Printf("%d app(s) may post signed events", len(s.appKeys))
 
 	// Signature checks and the RPC proxy are the expensive, unauthenticated
 	// paths; reads of static config get a looser ceiling.
@@ -75,6 +80,9 @@ func main() {
 	mux.HandleFunc("/balance", s.withCORS(auth.limit(s.handleBalance)))
 	mux.HandleFunc("/world", s.withCORS(reads.limit(s.handleWorld)))
 	mux.HandleFunc("/apps", s.withCORS(reads.limit(s.handleApps)))
+	// HMAC verification is cheap, but the write path is unauthenticated until
+	// the signature checks out, so it gets the tighter bucket.
+	mux.HandleFunc("/events", s.withCORS(auth.limit(s.handleEvents)))
 
 	port := os.Getenv("PORT")
 	if port == "" {

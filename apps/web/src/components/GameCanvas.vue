@@ -99,13 +99,14 @@ onMounted(async () => {
 
   offPresence = adapters.presence.onActorsChanged((next) => {
     store.nearbyActors = next
-    const online = next.filter((a) => a.kind === 'online')
+    // Ghosts ride the same channel: they are remote players too, just absent.
+    const remote = next.filter((a) => a.kind === 'online' || a.kind === 'ghost')
     worldBridge.emitUi({
       type: 'SYNC_ONLINE_ACTORS',
-      actors: online.map((a) => ({
+      actors: remote.map((a) => ({
         id: a.id,
         label: a.label,
-        kind: 'online' as const,
+        kind: a.kind as 'online' | 'ghost',
         statusLabel: a.statusLabel,
         position: a.position,
         color: a.color,

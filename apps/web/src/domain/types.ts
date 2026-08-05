@@ -15,7 +15,8 @@ export interface InteractionTarget {
 export interface OnlineActorSync {
   id: string
   label: string
-  kind: 'online'
+  /** `ghost` = recently active, not connected right now. */
+  kind: 'online' | 'ghost'
   statusLabel: string
   position: WorldPosition
   color: number

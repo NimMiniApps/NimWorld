@@ -163,6 +163,9 @@ export const usePlazaStore = defineStore('plaza', () => {
   async function launchApp(appId: string, launchUrl: string, name?: string) {
     if (!adapters) return
     if (lastPosition.value) savePlazaPosition(lastPosition.value)
+    // Tell the plaza before we navigate away, so the ghost we leave behind
+    // reads "Playing NimBomber" instead of a bare "Active just now".
+    adapters.presence.publishActivity(name ?? appId)
     await adapters.launcher.launch({
       appId,
       launchUrl,
