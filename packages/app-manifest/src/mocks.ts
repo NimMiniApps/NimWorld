@@ -1,45 +1,11 @@
 import type { AppManifest } from './types'
+import nimbomber from './manifests/nimbomber.json'
+import playnimiq from './manifests/playnimiq.json'
 
-export const nimbomberManifest: AppManifest = {
-  schemaVersion: 1,
-  id: 'nimbomber',
-  name: 'NimBomber',
-  description: 'Fast arcade battles powered by Nimiq.',
-  category: 'game',
-  iconUrl: 'https://nimbomber.nimiqminiapps.com/icons/icon-512.png',
-  launchUrl: 'https://nimbomber.nimiqminiapps.com',
-  capabilities: ['identity', 'achievements', 'stats', 'leaderboards', 'challenges'],
-  nimconnect: {
-    minimumSdkVersion: '0.1.0',
-    requestedScopes: ['profile:read', 'achievements:read', 'friends:read'],
-  },
-  world: {
-    locationType: 'arena',
-    district: 'games',
-    interactionLabel: 'Enter Arena',
-    featured: true,
-    statusProvider: 'nimbomber',
-  },
-}
-
-export const playnimiqManifest: AppManifest = {
-  schemaVersion: 1,
-  id: 'playnimiq',
-  name: 'PlayNimiq',
-  description: 'Skill-based games with Nimiq wallet identity and rewards.',
-  category: 'game',
-  iconUrl: 'https://playnimiq.com/images/nimiq-2048-game-logo.png',
-  launchUrl: 'https://playnimiq.com',
-  capabilities: ['identity', 'stats', 'leaderboards', 'challenges'],
-  nimconnect: {
-    requestedScopes: ['profile:read'],
-  },
-  world: {
-    locationType: 'arcade',
-    district: 'games',
-    interactionLabel: 'Open Arcade',
-    featured: true,
-  },
-}
+// One source of truth: these JSON files are what the Go API serves from /apps
+// too, so a manifest fix never has to be made twice. The casts are kept honest
+// by validate.test.ts, which runs the real validator over both.
+export const nimbomberManifest = nimbomber as AppManifest
+export const playnimiqManifest = playnimiq as AppManifest
 
 export const mockManifests: AppManifest[] = [nimbomberManifest, playnimiqManifest]

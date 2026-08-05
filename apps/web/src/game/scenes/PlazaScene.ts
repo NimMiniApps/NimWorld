@@ -67,6 +67,15 @@ const SWAYING_PROPS = new Set([
   'prop-fern',
 ])
 
+const ACTOR_SHEET_MAP: Record<string, CharSheet> = {
+  a: 'char-npc-a',
+  b: 'char-npc-b',
+  c: 'char-npc-c',
+  d: 'char-npc-d',
+  e: 'char-npc-e',
+}
+const FALLBACK_SHEETS: CharSheet[] = ['char-npc-a', 'char-npc-b', 'char-npc-c']
+
 type AmbientActor = {
   id?: string
   character: CharacterSprite
@@ -547,31 +556,19 @@ export class PlazaScene extends Phaser.Scene {
   }
 
   private spawnActors(actors: PlazaActor[]) {
-    const sheetMap: Record<string, CharSheet> = {
-      a: 'char-npc-a',
-      b: 'char-npc-b',
-      c: 'char-npc-c',
-      d: 'char-npc-d',
-      e: 'char-npc-e',
-    }
     let npcIndex = 0
-    const fallbackSheets: CharSheet[] = ['char-npc-a', 'char-npc-b', 'char-npc-c']
-
     for (const actor of actors) {
       if (actor.kind === 'online') {
         this.upsertOnlineActor(actor)
         continue
       }
-      this.spawnAmbientActor(actor, sheetMap, fallbackSheets, npcIndex++)
+      this.spawnAmbientActor(actor, npcIndex++)
     }
   }
 
-  private spawnAmbientActor(
-    actor: PlazaActor,
-    sheetMap: Record<string, CharSheet>,
-    fallbackSheets: CharSheet[],
-    npcIndex: number,
-  ) {
+  private spawnAmbientActor(actor: PlazaActor, npcIndex: number) {
+    const sheetMap = ACTOR_SHEET_MAP
+    const fallbackSheets = FALLBACK_SHEETS
     const home = actor.position
     const isGhost = actor.kind === 'ghost'
     const sheet: CharSheet = isGhost
@@ -612,7 +609,31 @@ export class PlazaScene extends Phaser.Scene {
     })
   }
 
+  /** A player who walked out (or came back) changes kind but keeps their id. */
+  private dropStaleTwin(actor: PlazaActor) {
+    for (let i = this.ambientActors.length - 1; i >= 0; i--) {
+      const ambient = this.ambientActors[i]!
+      if (ambient.id !== actor.id || ambient.kind === actor.kind) continue
+      ambient.character.sprite.destroy()
+      ambient.label.destroy()
+      this.ambientActors.splice(i, 1)
+    }
+  }
+
+  private upsertGhostActor(actor: PlazaActor) {
+    this.dropStaleTwin(actor)
+    const existing = this.ambientActors.find((a) => a.id === actor.id && a.kind === 'ghost')
+    if (existing) {
+      existing.displayName = actor.label
+      existing.statusLabel = actor.statusLabel
+      existing.label.setText(actor.label)
+      return
+    }
+    this.spawnAmbientActor(actor, 0)
+  }
+
   private upsertOnlineActor(actor: PlazaActor) {
+    this.dropStaleTwin(actor)
     const existing = this.ambientActors.find((a) => a.id === actor.id && a.kind === 'online')
     if (existing) {
       existing.target = { ...actor.position }
@@ -623,14 +644,7 @@ export class PlazaScene extends Phaser.Scene {
       return
     }
 
-    const sheetMap: Record<string, CharSheet> = {
-      a: 'char-npc-a',
-      b: 'char-npc-b',
-      c: 'char-npc-c',
-      d: 'char-npc-d',
-      e: 'char-npc-e',
-    }
-    const sheet: CharSheet = actor.sheet ? sheetMap[actor.sheet]! : 'char-npc-a'
+    const sheet: CharSheet = actor.sheet ? ACTOR_SHEET_MAP[actor.sheet]! : 'char-npc-a'
     const character = new CharacterSprite(this, actor.position.x, actor.position.y, sheet, false)
     const body = character.sprite.body as Phaser.Physics.Arcade.Body | null
     if (body) body.enable = false
@@ -664,14 +678,16 @@ export class PlazaScene extends Phaser.Scene {
   }
 
   private syncOnlineActors(actors: PlazaActor[]) {
-    const onlineIds = new Set(actors.map((a) => a.id))
+    const remoteIds = new Set(actors.map((a) => a.id))
     for (const actor of actors) {
       if (actor.kind === 'online') this.upsertOnlineActor(actor)
+      else if (actor.kind === 'ghost') this.upsertGhostActor(actor)
     }
     for (let i = this.ambientActors.length - 1; i >= 0; i--) {
       const ambient = this.ambientActors[i]!
-      if (ambient.kind !== 'online') continue
-      if (ambient.id && onlineIds.has(ambient.id)) continue
+      // NPCs are scene furniture; only remote actors come and go.
+      if (ambient.kind !== 'online' && ambient.kind !== 'ghost') continue
+      if (ambient.id && remoteIds.has(ambient.id)) continue
       ambient.character.sprite.destroy()
       ambient.label.destroy()
       this.ambientActors.splice(i, 1)

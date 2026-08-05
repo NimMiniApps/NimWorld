@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "nimbomber",
+  "name": "NimBomber",
+  "description": "Fast arcade battles powered by Nimiq.",
+  "category": "game",
+  "iconUrl": "https://nimbomber.nimiqminiapps.com/icons/icon-512.png",
+  "launchUrl": "https://nimbomber.nimiqminiapps.com",
+  "capabilities": ["identity", "achievements", "stats", "leaderboards", "challenges"],
+  "nimconnect": {
+    "minimumSdkVersion": "0.1.0",
+    "requestedScopes": ["profile:read", "achievements:read", "friends:read"]
+  },
+  "world": {
+    "locationType": "arena",
+    "district": "games",
+    "interactionLabel": "Enter Arena",
+    "featured": true,
+    "statusProvider": "nimbomber"
+  }
+}

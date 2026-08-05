@@ -82,11 +82,66 @@ func TestPresenceTwoPeersSeeEachOther(t *testing.T) {
 	}
 }
 
+func TestPresenceRemembersRecentlyActive(t *testing.T) {
+	s := newTestServer()
+	ts := httptest.NewServer(s.mux())
+	defer ts.Close()
+
+	alice := dialPresence(t, ts, "NQ01 ALICE TEST ADDRESS 0000 0000 0000")
+	defer alice.Close()
+	bob := dialPresence(t, ts, "NQ02 BOB TEST ADDRESS 0000 0000 0000 00")
+
+	mustWriteJSON(t, alice, map[string]any{"type": "join", "label": "@alice", "x": 100.0, "y": 200.0})
+	mustReadPresence(t, alice) // own snapshot
+	mustWriteJSON(t, bob, map[string]any{"type": "join", "label": "@bob", "x": 300.0, "y": 400.0})
+	mustReadPresence(t, bob)   // own snapshot
+	mustReadPresence(t, alice) // bob's peer_join
+
+	mustWriteJSON(t, bob, map[string]any{"type": "activity", "app": "NimBomber"})
+	act := mustReadPresence(t, alice)
+	if act["type"] != "peer_activity" || act["app"] != "NimBomber" {
+		t.Fatalf("alice expected peer_activity for NimBomber, got %v", act)
+	}
+
+	_ = bob.Close()
+	leave := mustReadPresence(t, alice)
+	if leave["type"] != "peer_leave" || leave["app"] != "NimBomber" {
+		t.Fatalf("alice expected peer_leave carrying the app, got %v", leave)
+	}
+
+	carol := dialPresence(t, ts, "NQ03 CAROL TEST ADDRESS 0000 0000 000")
+	defer carol.Close()
+	mustWriteJSON(t, carol, map[string]any{"type": "join", "label": "@carol", "x": 10.0, "y": 20.0})
+	snap := mustReadPresence(t, carol)
+	recent, _ := snap["recent"].([]any)
+	if len(recent) != 1 {
+		t.Fatalf("carol expected 1 recent peer (alice is online), got %v", snap["recent"])
+	}
+	entry := recent[0].(map[string]any)
+	if entry["label"] != "@bob" || entry["app"] != "NimBomber" {
+		t.Fatalf("unexpected recent entry: %v", entry)
+	}
+	if ago, ok := entry["seenAgoMs"].(float64); !ok || ago < 0 {
+		t.Fatalf("expected seenAgoMs, got %v", entry["seenAgoMs"])
+	}
+
+	// Rejoining clears the ghost.
+	bob2 := dialPresence(t, ts, "NQ02 BOB TEST ADDRESS 0000 0000 0000 00")
+	defer bob2.Close()
+	mustWriteJSON(t, bob2, map[string]any{"type": "join", "label": "@bob", "x": 300.0, "y": 400.0})
+	mustReadPresence(t, bob2)
+	if got := len(s.hub.recent); got != 0 {
+		t.Fatalf("expected bob dropped from recent on rejoin, %d left", got)
+	}
+}
+
 func newTestServer() *server {
 	s := &server{
 		tokens:       signedToken{secret: []byte("test-secret")},
 		cookieSecure: false,
 		hub:          newPlazaHub(),
+		events:       newEventStore(),
+		appKeys:      map[string]string{"nimbomber": "app-secret"},
 	}
 	return s
 }
@@ -98,6 +153,7 @@ func (s *server) mux() http.Handler {
 	mux.HandleFunc("/auth/me", s.handleMe)
 	mux.HandleFunc("/auth/logout", s.handleLogout)
 	mux.HandleFunc("/presence", s.handlePresence)
+	mux.HandleFunc("/events", s.handleEvents)
 	return mux
 }
 

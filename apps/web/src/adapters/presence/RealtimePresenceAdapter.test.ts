@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LocalPresenceAdapter } from './PresenceAdapter'
-import { RealtimePresenceAdapter } from './RealtimePresenceAdapter'
+import { RealtimePresenceAdapter, presenceStatusLabel } from './RealtimePresenceAdapter'
 
 class FakeSocket {
   static instances: FakeSocket[] = []
@@ -199,5 +199,72 @@ describe('RealtimePresenceAdapter', () => {
     const seen: number[] = []
     adapter.onActorsChanged((actors) => seen.push(actors.filter((a) => a.kind === 'online').length))
     await vi.waitFor(() => expect(seen[0]).toBe(1))
+  })
+
+  it('keeps departed players as recently-active ghosts and labels their status', async () => {
+    vi.stubGlobal('WebSocket', FakeSocket)
+
+    const adapter = new RealtimePresenceAdapter({
+      local: new LocalPresenceAdapter(),
+      wsUrl: 'ws://test/presence',
+      label: '@you',
+    })
+    const init = adapter.initialize()
+    await vi.waitFor(() => expect(FakeSocket.instances[0]).toBeTruthy())
+    const socket = FakeSocket.instances[0]!
+    socket.open()
+    socket.push({
+      type: 'snapshot',
+      peers: [{ id: 'NQ01', label: '@alice', x: 10, y: 20 }],
+      recent: [{ id: 'NQ02', label: '@bob', x: 30, y: 40, seenAgoMs: 5 * 60_000 }],
+    })
+    await init
+
+    const remoteOf = async (id: string) => (await adapter.getActors()).find((a) => a.id === id)
+
+    expect(await remoteOf('NQ02')).toMatchObject({
+      kind: 'ghost',
+      label: '@bob',
+      statusLabel: 'Active 5m ago',
+      position: { x: 30, y: 40 },
+      address: 'NQ02',
+    })
+
+    // Alice announces a game, then leaves for it — the ghost keeps the app.
+    socket.push({ type: 'peer_activity', id: 'NQ01', app: 'NimBomber' })
+    expect(await remoteOf('NQ01')).toMatchObject({
+      kind: 'online',
+      statusLabel: 'Playing NimBomber',
+    })
+
+    socket.push({ type: 'peer_leave', id: 'NQ01', app: 'NimBomber' })
+    expect(await remoteOf('NQ01')).toMatchObject({
+      kind: 'ghost',
+      statusLabel: 'Playing NimBomber',
+    })
+
+    // Bob walks back in: online again, no leftover ghost.
+    socket.push({ type: 'peer_join', id: 'NQ02', label: '@bob', x: 30, y: 40 })
+    const actors = await adapter.getActors()
+    expect(actors.filter((a) => a.id === 'NQ02')).toHaveLength(1)
+    expect(await remoteOf('NQ02')).toMatchObject({ kind: 'online', statusLabel: 'Online' })
+
+    adapter.publishActivity('NimBomber')
+    expect(socket.sent[socket.sent.length - 1]).toMatchObject({
+      type: 'activity',
+      app: 'NimBomber',
+    })
+    adapter.dispose()
+  })
+})
+
+describe('presenceStatusLabel', () => {
+  it('names the four plaza states', () => {
+    expect(presenceStatusLabel(undefined)).toBe('Online')
+    expect(presenceStatusLabel('NimBomber')).toBe('Playing NimBomber')
+    expect(presenceStatusLabel(undefined, 20_000)).toBe('Active just now')
+    expect(presenceStatusLabel(undefined, 7 * 60_000)).toBe('Active 7m ago')
+    expect(presenceStatusLabel(undefined, 3 * 3_600_000)).toBe('Active 3h ago')
+    expect(presenceStatusLabel(undefined, 40 * 3_600_000)).toBe('Active recently')
   })
 })

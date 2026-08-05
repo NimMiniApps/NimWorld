@@ -10,12 +10,33 @@ const MOVE_MIN_INTERVAL_MS = 50
 const SNAPSHOT_WAIT_MS = 1500
 const PLAYER_COLORS = [0x58c4ff, 0x4fd1a5, 0xff8a3d, 0xf5c542, 0xb48cff]
 const PLAYER_SHEETS = ['a', 'b', 'c', 'd', 'e'] as const
+const GHOST_COLOR = 0xffe29a
+/** "Active 4m ago" goes stale on its own, so re-label on a slow tick. */
+const RECENT_RELABEL_MS = 60_000
 
 type PeerState = {
   id: string
   label: string
   x: number
   y: number
+  /** Mini App the peer is currently in, if any. */
+  app?: string
+}
+
+type RecentState = PeerState & {
+  /** Epoch ms of the peer's last frame, as reckoned by this client. */
+  seenAt: number
+}
+
+/** Online / Playing X / Active Nm ago — the plaza's four honest states. */
+export function presenceStatusLabel(app: string | undefined, seenAgoMs?: number): string {
+  if (app) return `Playing ${app}`
+  if (seenAgoMs == null) return 'Online'
+  const minutes = Math.floor(seenAgoMs / 60_000)
+  if (minutes < 1) return 'Active just now'
+  if (minutes < 60) return `Active ${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  return hours < 24 ? `Active ${hours}h ago` : 'Active recently'
 }
 
 export type RealtimePresenceOptions = {
@@ -33,6 +54,8 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
   private readonly spawn: WorldPosition
   private socket: WebSocket | null = null
   private peers = new Map<string, PeerState>()
+  private recent = new Map<string, RecentState>()
+  private relabelTimer: ReturnType<typeof setInterval> | null = null
   private localActors: PlazaActor[] = []
   private rosterListeners = new Set<(actors: PlazaActor[]) => void>()
   private moveListeners = new Set<(id: string, position: WorldPosition) => void>()
@@ -52,10 +75,13 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
   async initialize(): Promise<void> {
     this.localActors = await this.local.getActors()
     await this.connect()
+    this.relabelTimer ??= setInterval(() => {
+      if (this.recent.size > 0) void this.emitRoster()
+    }, RECENT_RELABEL_MS)
   }
 
   async getActors(): Promise<PlazaActor[]> {
-    return [...this.localActors, ...this.peerActors()]
+    return [...this.localActors, ...this.peerActors(), ...this.recentActors()]
   }
 
   publishPosition(position: WorldPosition): void {
@@ -83,6 +109,11 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
     }
   }
 
+  publishActivity(app: string | null): void {
+    if (!this.socket || this.socket.readyState !== 1) return
+    this.socket.send(JSON.stringify({ type: 'activity', app: app ?? '' }))
+  }
+
   onActorsChanged(listener: (actors: PlazaActor[]) => void): () => void {
     this.rosterListeners.add(listener)
     // Catch up late subscribers (e.g. after Phaser boots).
@@ -104,7 +135,7 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
       id: peer.id,
       label: peer.label,
       kind: 'online',
-      statusLabel: 'Online',
+      statusLabel: presenceStatusLabel(peer.app),
       position: { x: peer.x, y: peer.y },
       color: PLAYER_COLORS[index % PLAYER_COLORS.length]!,
       sheet: PLAYER_SHEETS[index % PLAYER_SHEETS.length],
@@ -115,6 +146,10 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
   dispose(): void {
     this.rosterListeners.clear()
     this.moveListeners.clear()
+    if (this.relabelTimer != null) {
+      clearInterval(this.relabelTimer)
+      this.relabelTimer = null
+    }
     if (this.publishTimer != null) {
       clearTimeout(this.publishTimer)
       this.publishTimer = null
@@ -203,10 +238,20 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
     switch (msg.type) {
       case 'snapshot': {
         this.peers.clear()
+        this.recent.clear()
         const peers = Array.isArray(msg.peers) ? msg.peers : []
         for (const raw of peers) {
           const peer = raw as PeerState
           if (peer?.id) this.peers.set(peer.id, peer)
+        }
+        const recent = Array.isArray(msg.recent) ? msg.recent : []
+        for (const raw of recent) {
+          const entry = raw as PeerState & { seenAgoMs?: number }
+          if (!entry?.id) continue
+          this.recent.set(entry.id, {
+            ...entry,
+            seenAt: Date.now() - (Number(entry.seenAgoMs) || 0),
+          })
         }
         this.sawSnapshot = true
         this.wakeSnapshotWaiters()
@@ -216,12 +261,22 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
       case 'peer_join': {
         const id = String(msg.id ?? '')
         if (!id) return
+        this.recent.delete(id)
         this.peers.set(id, {
           id,
           label: String(msg.label ?? id),
           x: Number(msg.x) || 0,
           y: Number(msg.y) || 0,
+          app: String(msg.app ?? '') || undefined,
         })
+        void this.emitRoster()
+        break
+      }
+      case 'peer_activity': {
+        const id = String(msg.id ?? '')
+        const peer = this.peers.get(id)
+        if (!peer) return
+        peer.app = String(msg.app ?? '') || undefined
         void this.emitRoster()
         break
       }
@@ -237,7 +292,16 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
       }
       case 'peer_leave': {
         const id = String(msg.id ?? '')
-        if (this.peers.delete(id)) void this.emitRoster()
+        const peer = this.peers.get(id)
+        if (!peer) return
+        this.peers.delete(id)
+        // Leaving doesn't erase you from the plaza — you fade to a ghost.
+        this.recent.set(id, {
+          ...peer,
+          app: String(msg.app ?? '') || undefined,
+          seenAt: Date.now(),
+        })
+        void this.emitRoster()
         break
       }
     }
@@ -248,10 +312,24 @@ export class RealtimePresenceAdapter implements PresenceAdapter {
       id: peer.id,
       label: peer.label,
       kind: 'online' as const,
-      statusLabel: 'Online',
+      statusLabel: presenceStatusLabel(peer.app),
       position: { x: peer.x, y: peer.y },
       color: PLAYER_COLORS[index % PLAYER_COLORS.length]!,
       sheet: PLAYER_SHEETS[index % PLAYER_SHEETS.length],
+      address: peer.id,
+    }))
+  }
+
+  /** Players who were just here, drawn as ghosts where they left off. */
+  private recentActors(): PlazaActor[] {
+    const now = Date.now()
+    return [...this.recent.values()].map((peer) => ({
+      id: peer.id,
+      label: peer.label,
+      kind: 'ghost' as const,
+      statusLabel: presenceStatusLabel(peer.app, now - peer.seenAt),
+      position: { x: peer.x, y: peer.y },
+      color: GHOST_COLOR,
       address: peer.id,
     }))
   }

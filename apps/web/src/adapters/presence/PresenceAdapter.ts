@@ -23,6 +23,8 @@ export interface PresenceAdapter {
   initialize(): Promise<void>
   getActors(): Promise<PlazaActor[]>
   publishPosition(position: WorldPosition): void
+  /** Announce the Mini App the player is in; `null` clears it. */
+  publishActivity(app: string | null): void
   /** Roster changes (join / leave / snapshot). Not fired on every move. */
   onActorsChanged(listener: (actors: PlazaActor[]) => void): () => void
   /** Lightweight peer position updates for smooth avatar lerp. */
@@ -36,6 +38,8 @@ export class LocalPresenceAdapter implements PresenceAdapter {
   }
 
   publishPosition(_position: WorldPosition): void {}
+
+  publishActivity(_app: string | null): void {}
 
   onActorsChanged(_listener: (actors: PlazaActor[]) => void): () => void {
     return () => {}
