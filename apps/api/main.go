@@ -83,6 +83,7 @@ func main() {
 	// HMAC verification is cheap, but the write path is unauthenticated until
 	// the signature checks out, so it gets the tighter bucket.
 	mux.HandleFunc("/events", s.withCORS(auth.limit(s.handleEvents)))
+	mux.HandleFunc("/events/feed", s.withCORS(reads.limit(s.handleEventFeed)))
 
 	port := os.Getenv("PORT")
 	if port == "" {

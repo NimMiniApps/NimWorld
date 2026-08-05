@@ -26,6 +26,8 @@ const (
 	eventMaxSkew      = 5 * time.Minute
 	eventRingSize     = 500
 	eventReadMax      = 50
+	eventFeedMax      = 25
+	eventTextMax      = 120
 )
 
 type appEvent struct {
@@ -34,6 +36,11 @@ type appEvent struct {
 	Type    string          `json:"type"`
 	Data    json.RawMessage `json:"data,omitempty"`
 	TS      int64           `json:"ts"`
+	// Public events appear in the plaza activity feed, which every logged-in
+	// visitor can read. Private by default: an app opts a line in, and says
+	// in Text exactly what the plaza may show ("scored 4,200").
+	Public bool   `json:"public,omitempty"`
+	Text   string `json:"text,omitempty"`
 }
 
 type eventStore struct {
@@ -61,6 +68,20 @@ func (s *eventStore) forAddress(address string, limit int) []appEvent {
 	for i := 1; i <= len(s.ring) && len(out) < limit; i++ {
 		e := s.ring[(s.next-i+len(s.ring))%len(s.ring)]
 		if e.Address == address {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// publicFeed returns the newest public events across all apps and players.
+func (s *eventStore) publicFeed(limit int) []appEvent {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]appEvent, 0, limit)
+	for i := 1; i <= len(s.ring) && len(out) < limit; i++ {
+		e := s.ring[(s.next-i+len(s.ring))%len(s.ring)]
+		if e.Public && e.Address != "" {
 			out = append(out, e)
 		}
 	}
@@ -124,6 +145,15 @@ func (s *server) handleEventWrite(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "address and type are required", http.StatusBadRequest)
 		return
 	}
+	e.Text = strings.TrimSpace(e.Text)
+	if len(e.Text) > eventTextMax {
+		e.Text = e.Text[:eventTextMax]
+	}
+	// A public line with nothing to say would render as a blank row.
+	if e.Public && e.Text == "" {
+		http.Error(w, "public events need text", http.StatusBadRequest)
+		return
+	}
 	// A signature is replayable forever without a freshness bound.
 	now := time.Now()
 	ts := time.Unix(e.TS, 0)
@@ -137,6 +167,17 @@ func (s *server) handleEventWrite(w http.ResponseWriter, r *http.Request) {
 
 	s.events.append(e)
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// handleEventFeed serves the plaza's cross-app activity. Session-gated: the
+// plaza is a logged-in space, and this is the one endpoint that hands one
+// player's activity to another.
+func (s *server) handleEventFeed(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.readSessionCookie(r); !ok {
+		http.Error(w, "not logged in", http.StatusUnauthorized)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"events": s.events.publicFeed(eventFeedMax)})
 }
 
 func (s *server) handleEventRead(w http.ResponseWriter, r *http.Request) {

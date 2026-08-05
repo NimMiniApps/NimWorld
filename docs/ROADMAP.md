@@ -68,7 +68,7 @@ Depends on Phase 1 (real user identity to publish presence for).
 
 - Shared achievements (real, signed-event-verified, replacing mock)
 - Shared inventory (real, namespaced, app-local vs shared distinction enforced)
-- Activity feed (cross-app recent activity, public stats)
+- ~~Activity feed (cross-app recent activity, public stats)~~ — done. Apps opt a line in with `"public": true` plus a short `text`; `GET /events/feed` serves the newest 25 to logged-in visitors and Town Hall renders them, each row opening that player's profile. Public stats wait for real app data to aggregate.
 - Connected-app state from the catalog, and the NimConnect scopes beyond `profile:read` once they exist
 - App manifest/capabilities/SDK expansion for onboarding a second real app beyond NimBomber
 

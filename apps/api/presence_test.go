@@ -154,6 +154,7 @@ func (s *server) mux() http.Handler {
 	mux.HandleFunc("/auth/logout", s.handleLogout)
 	mux.HandleFunc("/presence", s.handlePresence)
 	mux.HandleFunc("/events", s.handleEvents)
+	mux.HandleFunc("/events/feed", s.handleEventFeed)
 	return mux
 }
 
