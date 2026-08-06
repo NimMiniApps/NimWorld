@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 // Signed app events: the only trusted write path into NimWorld. A Mini App's
@@ -74,15 +75,27 @@ func (s *eventStore) forAddress(address string, limit int) []appEvent {
 	return out
 }
 
+// feedEntry is everything the plaza may see of someone else's event. Data
+// never appears here: apps are told the payload is theirs, so publishing one
+// line must not publish whatever internal state rode along with it.
+type feedEntry struct {
+	AppID   string `json:"appId"`
+	Address string `json:"address"`
+	Text    string `json:"text"`
+	TS      int64  `json:"ts"`
+}
+
 // publicFeed returns the newest public events across all apps and players.
-func (s *eventStore) publicFeed(limit int) []appEvent {
+func (s *eventStore) publicFeed(limit int) []feedEntry {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	out := make([]appEvent, 0, limit)
+	out := make([]feedEntry, 0, limit)
 	for i := 1; i <= len(s.ring) && len(out) < limit; i++ {
 		e := s.ring[(s.next-i+len(s.ring))%len(s.ring)]
 		if e.Public && e.Address != "" {
-			out = append(out, e)
+			out = append(out, feedEntry{
+				AppID: e.AppID, Address: e.Address, Text: e.Text, TS: e.TS,
+			})
 		}
 	}
 	return out
@@ -111,6 +124,35 @@ func (s *server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// sanitizeEventText bounds what an app can put on a plaza row. The feed shows
+// this text beside a player's name, so a hostile app key would otherwise be
+// able to put words in someone else's mouth: line breaks that fake a second
+// row, or bidi overrides that reorder the rendered line. Truncation counts
+// runes — slicing bytes can cut a character in half.
+func sanitizeEventText(text string) string {
+	cleaned := strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t':
+			return ' '
+		case unicode.IsControl(r):
+			return -1
+		// Bidi overrides / isolates, and the zero-width joiners used to
+		// disguise text as something it is not.
+		case r >= 0x202A && r <= 0x202E, r >= 0x2066 && r <= 0x2069,
+			r == 0x200E, r == 0x200F, r == 0x200B, r == 0xFEFF:
+			return -1
+		}
+		return r
+	}, text)
+
+	cleaned = strings.Join(strings.Fields(cleaned), " ")
+	runes := []rune(cleaned)
+	if len(runes) > eventTextMax {
+		cleaned = string(runes[:eventTextMax])
+	}
+	return cleaned
 }
 
 func (s *server) handleEventWrite(w http.ResponseWriter, r *http.Request) {
@@ -145,10 +187,7 @@ func (s *server) handleEventWrite(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "address and type are required", http.StatusBadRequest)
 		return
 	}
-	e.Text = strings.TrimSpace(e.Text)
-	if len(e.Text) > eventTextMax {
-		e.Text = e.Text[:eventTextMax]
-	}
+	e.Text = sanitizeEventText(e.Text)
 	// A public line with nothing to say would render as a blank row.
 	if e.Public && e.Text == "" {
 		http.Error(w, "public events need text", http.StatusBadRequest)

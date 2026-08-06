@@ -81,7 +81,8 @@ Then `POST /events` with the signature in a header:
   signature with no freshness bound is replayable forever.
 - `address` identifies the player. The app id comes from the header, not the
   body, so one app cannot post as another.
-- `data` is yours; NimWorld stores it and does not interpret it.
+- `data` is yours; NimWorld stores it, does not interpret it, and never puts it
+  in the public feed — only the player's own `GET /events` returns it.
 
 Sign the exact bytes you send, not a re-serialized copy of the object:
 
@@ -119,3 +120,7 @@ every logged-in visitor reads — so it requires `text`, and `text` is the entir
 public statement (max 120 chars). Write it as a sentence fragment that follows a
 name: *"scored 4,200"*, *"won a 5-player match"*. Keep anything private out of
 it; there is no way to unpublish a line once it is in the feed.
+
+Line breaks, control characters and bidi overrides are stripped, and every row
+is labelled "reported by <your app>" — the line is attributed to the app, not
+quoted as the player. Do not write it as if the player were speaking.

@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 const testEventAddress = "NQ57 7NBS GKF1 R9B8 CHF1 0P92 67VG 02FF AL5C"
@@ -138,6 +140,65 @@ func TestEventFeedShowsOnlyPublicEvents(t *testing.T) {
 	}
 	if len(feed.Events) != 1 || feed.Events[0].Text != "scored 4,200" {
 		t.Fatalf("expected only the public event, got %+v", feed.Events)
+	}
+}
+
+// The app payload is the app's business. Publishing one line must not leak it.
+func TestEventFeedNeverExposesData(t *testing.T) {
+	s := newTestServer()
+	body := fmt.Sprintf(
+		`{"address":%q,"type":"score.posted","ts":%d,"public":true,"text":"scored 4,200","data":{"internalUserId":"secret-42"}}`,
+		testEventAddress, time.Now().Unix())
+	rec := httptest.NewRecorder()
+	s.handleEvents(rec, signedEventRequest(t, "nimbomber", "app-secret", body))
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected 202, got %d %s", rec.Code, rec.Body)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/events/feed", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  sessionCookieName,
+		Value: s.tokens.sign("NQ99 SOMEONE ELSE", sessionTTL),
+	})
+	rec = httptest.NewRecorder()
+	s.handleEventFeed(rec, req)
+	if strings.Contains(rec.Body.String(), "secret-42") {
+		t.Fatalf("feed leaked the app payload: %s", rec.Body)
+	}
+
+	// The player's own read still gets everything their apps stored.
+	own := httptest.NewRequest(http.MethodGet, "/events", nil)
+	own.AddCookie(&http.Cookie{
+		Name:  sessionCookieName,
+		Value: s.tokens.sign(normalizeNimiqAddress(testEventAddress), sessionTTL),
+	})
+	rec = httptest.NewRecorder()
+	s.handleEvents(rec, own)
+	if !strings.Contains(rec.Body.String(), "secret-42") {
+		t.Fatalf("own events should still carry data: %s", rec.Body)
+	}
+}
+
+func TestSanitizeEventText(t *testing.T) {
+	cases := map[string]string{
+		"scored 4,200":                      "scored 4,200",
+		"  spaced   out  ":                  "spaced out",
+		"line one\nNQ11 GIVEAWAY: send NIM": "line one NQ11 GIVEAWAY: send NIM",
+		"flip‮reversed":                     "flipreversed",
+		"zero​width":                        "zerowidth",
+		"bell\x07char":                      "bellchar",
+	}
+	for in, want := range cases {
+		if got := sanitizeEventText(in); got != want {
+			t.Errorf("sanitizeEventText(%q) = %q, want %q", in, got, want)
+		}
+	}
+
+	// Truncation counts runes, so multi-byte text survives intact.
+	long := strings.Repeat("é", eventTextMax+20)
+	got := sanitizeEventText(long)
+	if len([]rune(got)) != eventTextMax || !utf8.ValidString(got) {
+		t.Fatalf("expected %d valid runes, got %d", eventTextMax, len([]rune(got)))
 	}
 }
 
