@@ -71,7 +71,11 @@ function playerLabel(address: string) {
               <span class="who">{{ playerLabel(entry.address) }}</span>
               {{ entry.text }}
             </p>
-            <p class="muted small">{{ appName(entry) }} · {{ activityAgeLabel(entry.ts) }}</p>
+            <!-- The app is the author of that line, not the player. Say so on
+                 every row, so a hostile app cannot pass its text off as speech. -->
+            <p class="muted small">
+              reported by {{ appName(entry) }} · {{ activityAgeLabel(entry.ts) }}
+            </p>
           </button>
         </li>
       </ul>
