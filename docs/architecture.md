@@ -37,6 +37,7 @@ Vue HUD / overlays  <── WorldBridge ──>  Phaser plaza
 | Signed app events | `apps/api` `POST /events`, HMAC-SHA256 over the raw body with a per-app secret from `APP_KEYS=<id>:<secret>,…`; `GET /events` returns only the session's own events. The browser holds no secret, so there is no client-side award path |
 | Activity feed | Events marked `"public": true` (with a short `text`) appear in `GET /events/feed`, session-gated, newest 25; the response carries only app/address/text/ts — never the app's `data` payload. Text is stripped of control and bidi characters, and rows are labelled "reported by <app>". Everything else stays private to the player |
 | World config | `apps/api` `/world` → tip address; client falls back to the compiled default |
+| Connected apps | No upstream source: the catalog API exposes no per-user installed/connected/favorited state. Arcade badges launched apps from local launch history instead |
 | App registry | `apps/api` `/apps` serves `packages/app-manifest/src/manifests/*.json`; catalog chain is public API → registry → bundled |
 
 ## Bridge events
