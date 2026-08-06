@@ -68,7 +68,8 @@ Depends on Phase 1 (real user identity to publish presence for).
 - Shared achievements (real, signed-event-verified, replacing mock)
 - Shared inventory (real, namespaced, app-local vs shared distinction enforced)
 - ~~Activity feed (cross-app recent activity, public stats)~~ — done. Apps opt a line in with `"public": true` plus a short `text`; `GET /events/feed` serves the newest 25 to logged-in visitors and Town Hall renders them, each row opening that player's profile. Public stats wait for real app data to aggregate.
-- Connected-app state from the catalog, and the NimConnect scopes beyond `profile:read` once they exist
+- Connected-app state from the catalog — **blocked upstream.** `api.nimiqminiapps.com/openapi.json` has no notion of a connected, installed or favorited app; `/api/my/apps` is developer *ownership* behind that API's own wallet session, not player connection. profile-client 0.8.0 exposes nothing either. The Arcade instead badges apps you have actually launched ("Played"), from NimWorld's own launch history, and says so rather than claiming a connection. Revisit if the catalog adds a per-user library endpoint.
+- NimConnect scopes beyond `profile:read` once they exist
 - App manifest/capabilities/SDK expansion for onboarding a second real app beyond NimBomber. The signed-event side is documented and runnable (`docs/adding-an-app.md`, `apps/api/cmd/signevent`); what is missing is a real app posting events.
 
 Research before building: shared achievement/inventory envelope validation against real app data, activity-feed aggregation, SDK surface expansion for third-party apps.

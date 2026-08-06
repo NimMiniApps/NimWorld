@@ -25,6 +25,17 @@ const recent = computed(() =>
   })),
 )
 
+/**
+ * The catalog has no notion of a connected or installed app (nothing in the
+ * NimiqMiniApps API exposes one), so the only honest signal we have is our own
+ * launch record — and the badge says exactly that rather than "Connected".
+ */
+const playedAppIds = computed(() => new Set(store.launchHistory.map((e) => e.appId)))
+
+function hasPlayed(app: { id: string; slug: string }): boolean {
+  return playedAppIds.value.has(app.slug || app.id)
+}
+
 function relativeTime(at: number): string {
   const minutes = Math.round((Date.now() - at) / 60_000)
   if (minutes < 1) return 'just now'
@@ -67,11 +78,16 @@ function relativeTime(at: number): string {
         <div class="row">
           <img v-if="app.iconUrl" :src="app.iconUrl" alt="" width="40" height="40" />
           <div>
-            <p class="display name">{{ app.name }}</p>
+            <p class="display name">
+              {{ app.name }}
+              <span v-if="hasPlayed(app)" class="played">Played</span>
+            </p>
             <p class="muted">{{ app.tagline || app.category }}</p>
           </div>
         </div>
-        <button class="nw-btn nw-btn-primary" type="button" @click="launch(app)">Launch</button>
+        <button class="nw-btn nw-btn-primary" type="button" @click="launch(app)">
+          {{ hasPlayed(app) ? 'Play again' : 'Launch' }}
+        </button>
       </li>
     </ul>
   </div>
@@ -91,6 +107,17 @@ function relativeTime(at: number): string {
 .recent {
   display: grid;
   gap: 0.45rem;
+}
+
+.played {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--nw-muted);
+  border: 1px solid var(--nw-panel-border);
+  vertical-align: middle;
 }
 
 .heading {
