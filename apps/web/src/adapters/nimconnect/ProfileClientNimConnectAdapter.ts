@@ -1,4 +1,5 @@
 import { createProfileClient, type FriendEntry } from '@nimconnect/profile-client'
+import { validateAchievement } from '@nimworld/app-manifest'
 import type {
   Achievement,
   InventoryItem,
@@ -8,7 +9,6 @@ import type {
 } from '@/domain/types'
 import { identiconDataUrl } from '@/lib/identicon'
 import {
-  MOCK_ACHIEVEMENTS,
   MOCK_INVENTORY,
   MOCK_PROFILE,
 } from './mockData'
@@ -140,7 +140,17 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   }
 
   async getAchievements(appId?: string): Promise<Achievement[]> {
-    return MOCK_ACHIEVEMENTS.filter((a) => !appId || a.appId === appId).map((a) => ({ ...a }))
+    const address = this.address ?? this.fallbackAddress
+    if (!address) return []
+    try {
+      const raw = await this.client.listAchievements(address)
+      return raw
+        .map(fromNimConnectAchievement)
+        .filter((a): a is Achievement => a !== null)
+        .filter((a) => !appId || a.appId === appId)
+    } catch {
+      return []
+    }
   }
 
   async getInventory(appId?: string): Promise<InventoryItem[]> {
@@ -219,4 +229,42 @@ async function withIdenticon(profile: PublicProfile): Promise<PublicProfile> {
   } catch {
     return profile
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function mapProgress(progress: unknown): { current: number; target: number } | undefined {
+  if (!isRecord(progress)) return undefined
+  const current = progress.current
+  const target = progress.target ?? progress.total
+  if (typeof current !== 'number' || typeof target !== 'number') return undefined
+  return { current, target }
+}
+
+function fromNimConnectAchievement(raw: {
+  appId: string
+  achievementId: string
+  title: string
+  description: string
+  rarity: string
+  grantedAt: number
+  progress?: unknown
+}): Achievement | null {
+  const progress = mapProgress(raw.progress)
+  const envelope = {
+    schemaVersion: 1,
+    appId: raw.appId,
+    achievementId: raw.achievementId,
+    title: raw.title,
+    description: raw.description,
+    ...(raw.rarity ? { rarity: raw.rarity } : {}),
+    ...(raw.grantedAt ? { unlockedAt: new Date(raw.grantedAt * 1000).toISOString() } : {}),
+    ...(progress ? { progress } : {}),
+  }
+  const result = validateAchievement(envelope)
+  if (!result.ok) return null
+  const { schemaVersion: _, ...domain } = result.manifest
+  return domain
 }

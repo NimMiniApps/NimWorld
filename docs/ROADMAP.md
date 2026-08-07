@@ -17,7 +17,7 @@ Source: `prompt.md` (product/technical spec) + `docs/architecture.md` (current i
 
 ## Gap this roadmap covers
 
-- NimConnect achievements and inventory — still mock. **Blocked upstream:** NimConnect exposes no production API for these, as `requestScopes` states. Do not plan work that assumes them. (Friends are real since profile-client 0.6.0.)
+- NimConnect achievements — read path live via `listAchievements` + envelope validation (empty until apps post awards). Inventory still mock.
 - Signed events exist (spec §6) but no real app posts them yet, so the activity feed is empty in practice
 - No accessibility pass, no e2e tests, no sound controls, no perf-optimization pass
 
