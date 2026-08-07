@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { AppAdapters } from '@/adapters/createAdapters'
 import type { CatalogSource } from '@/adapters/catalog/MiniAppCatalogAdapter'
 import { fetchWorldConfig, FALLBACK_WORLD_CONFIG, type WorldConfig } from '@/adapters/world/worldConfig'
@@ -12,6 +12,7 @@ import {
   shouldAutoConnectFriends,
   skipAutoConnectFriends,
 } from '@/adapters/nimconnect/friendsSession'
+import type { AuthorizedApp } from '@/adapters/nimconnect/types'
 import {
   loadPlazaPosition,
   savePlazaPosition,
@@ -73,6 +74,11 @@ export const usePlazaStore = defineStore('plaza', () => {
   const worldConfig = ref<WorldConfig>(FALLBACK_WORLD_CONFIG)
   /** Cross-app activity, signed by the apps that reported it. */
   const activityFeed = ref<ActivityEntry[]>([])
+  /** Live NimConnect grants — drives Arcade Connected badges. */
+  const authorizedApps = ref<AuthorizedApp[]>([])
+  const authorizedAudiences = computed(
+    () => new Set(authorizedApps.value.map((a) => a.audience)),
+  )
 
   let adapters: AppAdapters | null = null
 
@@ -302,6 +308,14 @@ export const usePlazaStore = defineStore('plaza', () => {
     balanceIsPreview.value = true
   }
 
+  async function loadAuthorizedApps() {
+    if (!adapters) {
+      authorizedApps.value = []
+      return
+    }
+    authorizedApps.value = await adapters.nimconnect.listAuthorizedApps()
+  }
+
   async function loadFriends() {
     if (!adapters) return
     friendsConnected.value = adapters.nimconnect.hasFriendsSession()
@@ -309,6 +323,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     friendRequests.value = friendsConnected.value
       ? await adapters.nimconnect.getFriendRequests()
       : []
+    await loadAuthorizedApps()
   }
 
   /**
@@ -329,7 +344,7 @@ export const usePlazaStore = defineStore('plaza', () => {
   const connectFriends = () => runFriendAction((a) => a.nimconnect.connectFriends())
 
   /**
-   * Restore the seven-day grant or request one readable v3 authorization.
+   * Restore stored session/grant or request a new v3 authorization.
    * A refusal or network failure is remembered for this load; the Social
    * Club's Connect button remains the way back in.
    */
@@ -394,6 +409,8 @@ export const usePlazaStore = defineStore('plaza', () => {
     launchHistory,
     worldConfig,
     activityFeed,
+    authorizedApps,
+    authorizedAudiences,
     setAdapters,
     bootstrap,
     setInteraction,
@@ -409,6 +426,7 @@ export const usePlazaStore = defineStore('plaza', () => {
     submitPayment,
     refreshBalance,
     loadFriends,
+    loadAuthorizedApps,
     connectFriends,
     sendFriendRequest,
     acceptFriendRequest,

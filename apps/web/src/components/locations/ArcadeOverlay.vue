@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { usePlazaStore } from '@/stores/plazaStore'
+import { isConnected, isPlayed } from './arcadeBadges'
 
 const store = usePlazaStore()
 const query = ref('')
@@ -25,15 +26,14 @@ const recent = computed(() =>
   })),
 )
 
-/**
- * The catalog has no notion of a connected or installed app (nothing in the
- * NimiqMiniApps API exposes one), so the only honest signal we have is our own
- * launch record — and the badge says exactly that rather than "Connected".
- */
 const playedAppIds = computed(() => new Set(store.launchHistory.map((e) => e.appId)))
 
-function hasPlayed(app: { id: string; slug: string }): boolean {
-  return playedAppIds.value.has(app.slug || app.id)
+function connected(app: { id: string; slug: string }): boolean {
+  return isConnected(app, store.authorizedAudiences)
+}
+
+function played(app: { id: string; slug: string }): boolean {
+  return isPlayed(app, playedAppIds.value)
 }
 
 function relativeTime(at: number): string {
@@ -50,6 +50,7 @@ function relativeTime(at: number): string {
   <div class="stack">
     <p class="muted">
       Scalable games portal. Seeded from manifests and the NimiqMiniApps catalog when available.
+      Connected means a live NimConnect grant; Played is your local launch history.
     </p>
 
     <section v-if="recent.length" class="recent">
@@ -80,13 +81,14 @@ function relativeTime(at: number): string {
           <div>
             <p class="display name">
               {{ app.name }}
-              <span v-if="hasPlayed(app)" class="played">Played</span>
+              <span v-if="connected(app)" class="connected">Connected</span>
+              <span v-if="played(app)" class="played">Played</span>
             </p>
             <p class="muted">{{ app.tagline || app.category }}</p>
           </div>
         </div>
         <button class="nw-btn nw-btn-primary" type="button" @click="launch(app)">
-          {{ hasPlayed(app) ? 'Play again' : 'Launch' }}
+          {{ played(app) ? 'Play again' : 'Launch' }}
         </button>
       </li>
     </ul>
@@ -109,15 +111,25 @@ function relativeTime(at: number): string {
   gap: 0.45rem;
 }
 
+.connected,
 .played {
   margin-left: 0.4rem;
   padding: 0.05rem 0.4rem;
   border-radius: 999px;
   font-size: 0.68rem;
   font-weight: 600;
+  vertical-align: middle;
+}
+
+.connected {
+  color: #1a1408;
+  background: linear-gradient(135deg, #f0c35a, #e8a838);
+  border: 1px solid rgba(240, 195, 90, 0.8);
+}
+
+.played {
   color: var(--nw-muted);
   border: 1px solid var(--nw-panel-border);
-  vertical-align: middle;
 }
 
 .heading {

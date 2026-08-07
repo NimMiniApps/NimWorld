@@ -117,9 +117,10 @@ export async function clearFriendsSession(): Promise<void> {
   await clearStoredSession()
 }
 
+/** One attempt per load: restores stored session/grant or prompts for a new one. */
 export async function shouldAutoConnectFriends(): Promise<boolean> {
   if (autoConnectAttempted || !getResolvedAddress()) return false
-  return !(await storedAuthorization())
+  return true
 }
 
 export function skipAutoConnectFriends(): void {

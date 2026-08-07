@@ -12,6 +12,7 @@ function stubAdapters(connected: boolean) {
     getFriendRequests: vi.fn(async () => [
       { ...REAL_ROW, status: 'pending_in' as const, friendshipId: '1' },
     ]),
+    listAuthorizedApps: vi.fn(async () => []),
     connectFriends: vi.fn(async () => {
       connected = true
     }),
