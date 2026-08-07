@@ -12,7 +12,7 @@ import {
   MOCK_INVENTORY,
   MOCK_PROFILE,
 } from './mockData'
-import { createFriendsAuthorization, NIMCONNECT_AUDIENCE } from './friendsSession'
+import { ensureNimConnectAccess, NIMCONNECT_AUDIENCE } from './friendsSession'
 import type { NimConnectAdapter, PermissionResult } from './types'
 import { openNimconnect } from './links'
 
@@ -74,11 +74,12 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   }
 
   async connectFriends(): Promise<void> {
-    const authorization = await createFriendsAuthorization(this.client)
+    const access = await ensureNimConnectAccess(this.client)
     this.client = createProfileClient({
       baseUrl: nimconnectApiBase(),
       audience: NIMCONNECT_AUDIENCE,
-      authorization,
+      sessionToken: access.sessionToken,
+      authorization: access.authorization,
     })
   }
 
@@ -124,7 +125,7 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   }
 
   async requestScopes(scopes: NimConnectScope[]): Promise<PermissionResult> {
-    const supported: NimConnectScope[] = ['profile:read', 'friends:read']
+    const supported: NimConnectScope[] = ['profile:read', 'friends:read', 'achievements:read']
     const granted = scopes.filter((s) => supported.includes(s))
     const denied = scopes.filter((s) => !supported.includes(s))
     return {
@@ -132,7 +133,7 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
       denied,
       note:
         denied.length > 0
-          ? 'Achievements, inventory, and messaging scopes are not available from NimConnect yet. Mock data is used instead.'
+          ? 'Inventory and messaging scopes are not available from NimConnect yet. Mock data is used instead.'
           : undefined,
     }
   }
