@@ -1,15 +1,17 @@
 # Cross-App Platform Design — NimWorld side
 
 Date: 2026-08-07
-Status: draft — needs approval
+Status: approved — implement Phase 1 + Phase 2 (Approach 1)
+Updated: 2026-08-08
 
 Scope: **what NimWorld builds and consumes.** The services it consumes are
 designed in their own repos:
 
 - `NimConnect/docs/plans/2026-08-07-ecosystem-awards-and-app-registry-design.md`
   — authorizations list, awards, scopes, item trading on the escrow machinery
+  (phases 1–3 implemented upstream)
 - `NimiqMiniApps/docs/plans/2026-08-07-app-registry-for-nimconnect-design.md`
-  — app identity, declared scopes, verification
+  — app identity, declared scopes, verification (implemented)
 
 ## What the spec fixes
 
@@ -46,42 +48,48 @@ built. Awards are the right column and never touch our backend.
 | Installed / favourited | Catalog library | user curation — does not exist yet |
 | **Played** | NimWorld launch history | we saw you open it, on this device |
 
-Today we only know the third, and only in `localStorage`: device-local, the
-backend never sees it, clearing the browser erases it. The Arcade's current
-"Played" badge is honest about exactly that much, and stays until Connected is
-available.
+## Locked decisions (2026-08-08)
 
-The catalog cannot supply Connected — `/api/apps/{slug}/track` is documented
-"no auth, fire-and-forget", an anonymous counter that never learns who opened
-an app.
+- **Approach 1 — adapter-first, minimal UI.** No connection-manager panel, no
+  inventing revoke-by-audience against NimConnect.
+- **Bump** `@nimconnect/profile-client` to `0.9.0` (ships `listAuthorizations`,
+  `listAchievements`, mirrored app identity on grants).
+- **First-party session required for Connected.** `GET /api/authorizations`
+  needs `X-NimConnect-Session` (`createSession`), not only the v3 `nimworld`
+  friends grant. Wire a first-party session alongside the existing friends auth
+  flow.
+- **Identity from the grant first.** Use `displayName` / `iconUrl` / `verified`
+  on each authorization; catalog is fallback only.
+- **Disconnect honesty.** profile-client `revokeAuthorization()` only clears the
+  *current* Bearer grant. Do **not** fake per-app Disconnect for third-party
+  audiences. Revoke remains available for NimWorld's own grant/session if we
+  already expose that path.
+- **Inventory and trading stay deferred** (Phases 3–4 below).
 
 ## Phase 1 — Connected apps
 
-NimConnect already persists audience-scoped grants (wallet, app, scopes,
-expiry, revocation) per its `2026-08-05-full-scoped-authorization-design.md`.
-Once it exposes `GET /api/authorizations`:
-
-- `NimConnectAdapter.listAuthorizedApps()` behind the existing session
+- `NimConnectAdapter.listAuthorizedApps()` behind the first-party session
 - Arcade shows **Connected** distinctly from **Played** — do not merge the
   badges; they mean different things
-- Disconnect calls `revokeAuthorization()`, which profile-client already has
-- Resolve app id → name/icon through the catalog we already query
-
-No NimWorld backend work. Real data the day the endpoint lands.
+- Match grant `audience` to Arcade apps by slug/id
+- No NimWorld backend work
 
 ## Phase 2 — Achievements
 
 1. **Envelope** — transcribe §9's `Achievement` (and `AppStat` where the UI
    needs it) into `packages/app-manifest` beside the manifest schema: TS types,
-   JSON Schema, `validateAchievement()`, tests. Versioned, same as the manifest
-   envelope.
+   JSON Schema, `validateAchievement()`, tests. Align with NimConnect's award
+   shape (`appId`, `achievementId`, `title`, `description`, `rarity`,
+   `visibility`, `grantedAt`, optional `progress`).
 2. **Read-path validation** — an award that fails validation never reaches the
-   UI, whatever NimConnect returned. That is §6's verification duty applied
-   where we own the decision.
-3. **Adapter** — `getAchievements()` keeps its signature; the mock swaps for
-   `achievements:read` with no UI churn.
-4. **UI** — where achievements render, empty states, and explicit "awarded by
-   <app>" attribution so a player can tell a verified award from decoration.
+   UI, whatever NimConnect returned.
+3. **Adapter** — `getAchievements()` keeps its signature; call
+   `listAchievements(address)`; include `achievements:read` on the NimWorld
+   grant so private awards can show for the signed-in player. Mock adapter
+   remains for tests/offline.
+4. **UI** — Fountain: empty states, drop the mock label when live, explicit
+   "awarded by \<app\>" attribution (resolve name from grant / `getApp` /
+   catalog — never invent).
 
 Expect an empty shelf until an app actually posts awards — the position the
 activity feed is in today. Build it anyway; it is the prerequisite.
