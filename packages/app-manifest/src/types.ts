@@ -52,4 +52,20 @@ export interface AppManifest {
   extensions?: Record<string, unknown>
 }
 
+export type AchievementRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'
+
+export interface Achievement {
+  schemaVersion: number
+  appId: string
+  achievementId: string
+  title: string
+  description: string
+  iconUrl?: string
+  rarity?: AchievementRarity
+  unlockedAt?: string
+  progress?: { current: number; target: number }
+}
+
+export const ACHIEVEMENT_RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const
+
 export const SUPPORTED_SCHEMA_VERSIONS = [1] as const

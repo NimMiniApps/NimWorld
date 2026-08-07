@@ -1,4 +1,6 @@
 export type {
+  Achievement,
+  AchievementRarity,
   AppCapability,
   AppManifest,
   AppManifestNimConnect,
@@ -6,7 +8,12 @@ export type {
   NimConnectScope,
   WorldLocationType,
 } from './types'
-export { SUPPORTED_SCHEMA_VERSIONS } from './types'
-export { assertAppManifest, validateAppManifest } from './validate'
-export type { ManifestValidationResult } from './validate'
+export { ACHIEVEMENT_RARITIES, SUPPORTED_SCHEMA_VERSIONS } from './types'
+export {
+  assertAchievement,
+  assertAppManifest,
+  validateAchievement,
+  validateAppManifest,
+} from './validate'
+export type { AchievementValidationResult, ManifestValidationResult } from './validate'
 export { mockManifests, nimbomberManifest, playnimiqManifest } from './mocks'

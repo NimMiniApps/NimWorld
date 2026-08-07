@@ -1,6 +1,41 @@
 import { describe, expect, it } from 'vitest'
 import { mockManifests, nimbomberManifest } from './mocks'
-import { validateAppManifest } from './validate'
+import { validateAchievement, validateAppManifest } from './validate'
+
+const validAchievement = {
+  schemaVersion: 1,
+  appId: 'nimbomber',
+  achievementId: 'first-blast',
+  title: 'First Blast',
+  description: 'Win your first match.',
+  rarity: 'common',
+}
+
+describe('validateAchievement', () => {
+  it('accepts a valid §9 achievement', () => {
+    const result = validateAchievement(validAchievement)
+    expect(result.ok).toBe(true)
+  })
+
+  it('rejects missing required fields', () => {
+    expect(validateAchievement({ schemaVersion: 1, appId: 'x' }).ok).toBe(false)
+  })
+
+  it('rejects bad rarity', () => {
+    const result = validateAchievement({ ...validAchievement, rarity: 'mythic' })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.errors.some((e) => e.includes('rarity'))).toBe(true)
+  })
+
+  it('allows omitted rarity', () => {
+    const { rarity: _, ...rest } = validAchievement
+    expect(validateAchievement(rest).ok).toBe(true)
+  })
+
+  it('rejects empty rarity string', () => {
+    expect(validateAchievement({ ...validAchievement, rarity: '' }).ok).toBe(false)
+  })
+})
 
 describe('validateAppManifest', () => {
   it('accepts a valid v1 manifest', () => {

@@ -84,5 +84,40 @@
       "type": "object",
       "additionalProperties": true
     }
+  },
+  "$defs": {
+    "Achievement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "appId",
+        "achievementId",
+        "title",
+        "description"
+      ],
+      "properties": {
+        "schemaVersion": { "type": "integer", "const": 1 },
+        "appId": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9-]+$" },
+        "achievementId": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9-]+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "iconUrl": { "type": "string", "minLength": 1 },
+        "rarity": {
+          "type": "string",
+          "enum": ["common", "uncommon", "rare", "epic", "legendary"]
+        },
+        "unlockedAt": { "type": "string", "minLength": 1 },
+        "progress": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["current", "target"],
+          "properties": {
+            "current": { "type": "number" },
+            "target": { "type": "number" }
+          }
+        }
+      }
+    }
   }
 }
