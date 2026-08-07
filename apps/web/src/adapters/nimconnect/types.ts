@@ -12,6 +12,17 @@ export interface PermissionResult {
   note?: string
 }
 
+/** Live grant from NimConnect `listAuthorizations` (first-party session). */
+export interface AuthorizedApp {
+  audience: string
+  displayName: string
+  iconUrl?: string
+  verified: boolean
+  scopes: string[]
+  grantedAt: number
+  expiresAt: number
+}
+
 export interface NimConnectAdapter {
   initialize(): Promise<void>
   getCurrentProfile(): Promise<PublicProfile | null>
@@ -29,6 +40,8 @@ export interface NimConnectAdapter {
   acceptFriendRequest(friendshipId: string): Promise<void>
   declineFriendRequest(friendshipId: string): Promise<void>
   removeFriend(address: string): Promise<void>
+  /** Apps the user has granted — requires first-party NimConnect session. */
+  listAuthorizedApps(): Promise<AuthorizedApp[]>
   getAchievements(appId?: string): Promise<Achievement[]>
   getInventory(appId?: string): Promise<InventoryItem[]>
   requestScopes(scopes: NimConnectScope[]): Promise<PermissionResult>

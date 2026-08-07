@@ -13,13 +13,13 @@ import {
   MOCK_PROFILE,
 } from './mockData'
 import { ensureNimConnectAccess, NIMCONNECT_AUDIENCE } from './friendsSession'
-import type { NimConnectAdapter, PermissionResult } from './types'
+import type { AuthorizedApp, NimConnectAdapter, PermissionResult } from './types'
 import { openNimconnect } from './links'
 
 /**
  * Uses real @nimconnect/profile-client for public profile/handle lookup and,
- * once a NimConnect session exists, for friends. Achievements and inventory
- * remain clearly labelled mocks until NimConnect exposes APIs for them.
+ * once a NimConnect session exists, for friends and authorizations.
+ * Achievements load from NimConnect when signed in; inventory stays mocked.
  */
 export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   private client = createProfileClient({
@@ -29,11 +29,17 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   })
   private address: string | null = null
   private cachedProfile: PublicProfile | null = null
+  /** Tracked separately — profile-client's getSessionToken() prefers the grant. */
+  private firstPartySessionToken: string | null = null
 
   constructor(private readonly fallbackAddress?: string) {}
 
   setAddress(address: string | null) {
     this.address = address
+  }
+
+  private hasFirstPartySession(): boolean {
+    return Boolean(this.firstPartySessionToken)
   }
 
   async initialize(): Promise<void> {
@@ -75,12 +81,31 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
 
   async connectFriends(): Promise<void> {
     const access = await ensureNimConnectAccess(this.client)
+    this.firstPartySessionToken = access.sessionToken
     this.client = createProfileClient({
       baseUrl: nimconnectApiBase(),
       audience: NIMCONNECT_AUDIENCE,
       sessionToken: access.sessionToken,
       authorization: access.authorization,
     })
+  }
+
+  async listAuthorizedApps(): Promise<AuthorizedApp[]> {
+    if (!this.hasFirstPartySession()) return []
+    try {
+      const grants = await this.client.listAuthorizations()
+      return grants.map((g) => ({
+        audience: g.audience,
+        displayName: g.displayName,
+        ...(g.iconUrl ? { iconUrl: g.iconUrl } : {}),
+        verified: g.verified,
+        scopes: [...g.scopes],
+        grantedAt: g.grantedAt,
+        expiresAt: g.expiresAt,
+      }))
+    } catch {
+      return []
+    }
   }
 
   // No session, no friends — an invented list is worse than an empty one.

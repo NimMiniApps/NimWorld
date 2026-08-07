@@ -5,7 +5,7 @@ import type {
   PublicFriend,
   PublicProfile,
 } from '@/domain/types'
-import type { NimConnectAdapter, PermissionResult } from './types'
+import type { AuthorizedApp, NimConnectAdapter, PermissionResult } from './types'
 import { openNimconnect } from './links'
 import {
   MOCK_ACHIEVEMENTS,
@@ -60,6 +60,20 @@ export class MockNimConnectAdapter implements NimConnectAdapter {
 
   async removeFriend(): Promise<void> {
     throw new Error('Connect NimConnect to manage friends')
+  }
+
+  async listAuthorizedApps(): Promise<AuthorizedApp[]> {
+    // Fixed Connected data so Arcade mock mode is not an empty shelf.
+    return [
+      {
+        audience: 'nimbomber',
+        displayName: 'NimBomber',
+        verified: true,
+        scopes: ['achievements:read'],
+        grantedAt: Math.floor(Date.now() / 1000) - 86_400,
+        expiresAt: Math.floor(Date.now() / 1000) + 86_400 * 6,
+      },
+    ]
   }
 
   async getAchievements(appId?: string): Promise<Achievement[]> {
