@@ -6,20 +6,28 @@ import { usePlazaStore } from '@/stores/plazaStore'
 const store = usePlazaStore()
 const achievements = ref<Achievement[]>([])
 const inventory = ref<InventoryItem[]>([])
+const achievementsLive = ref(false)
+const appNames = ref<Record<string, string>>({})
 
 onMounted(async () => {
   const extras = await store.loadFountainExtras()
   achievements.value = extras.achievements
   inventory.value = extras.inventory
+  achievementsLive.value = extras.achievementsLive
+  appNames.value = extras.appNames
 })
+
+function appName(appId: string): string {
+  return appNames.value[appId] ?? appId
+}
 </script>
 
 <template>
   <div class="stack">
     <p class="lead">
       Your identity hub. Public profile comes from NimConnect when available (friends too,
-      once connected in the Social Club); achievements and inventory below are labelled mock
-      data until those APIs exist.
+      once connected in the Social Club). Achievements come from NimConnect when you're signed
+      in; inventory below is still mock data.
     </p>
 
     <div class="identity" v-if="store.profile">
@@ -53,13 +61,17 @@ onMounted(async () => {
     </div>
 
     <section>
-      <h3 class="display">Achievements <span class="mock">mock</span></h3>
+      <h3 class="display">
+        Achievements
+        <span v-if="!achievementsLive" class="mock">mock</span>
+      </h3>
       <ul>
-        <li v-for="item in achievements" :key="item.achievementId">
+        <li v-for="item in achievements" :key="`${item.appId}:${item.achievementId}`">
           <strong>{{ item.title }}</strong>
           <span>{{ item.description }}</span>
+          <span class="by">awarded by {{ appName(item.appId) }}</span>
         </li>
-        <li v-if="!achievements.length" class="muted">No achievements loaded yet.</li>
+        <li v-if="!achievements.length" class="muted">No achievements yet.</li>
       </ul>
     </section>
 
@@ -143,5 +155,9 @@ li {
 li span {
   color: var(--nw-muted);
   font-size: 0.85rem;
+}
+
+.by {
+  font-size: 0.78rem;
 }
 </style>

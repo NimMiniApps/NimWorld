@@ -375,13 +375,30 @@ export const usePlazaStore = defineStore('plaza', () => {
   async function loadFountainExtras(): Promise<{
     achievements: import('@/domain/types').Achievement[]
     inventory: import('@/domain/types').InventoryItem[]
+    achievementsLive: boolean
+    appNames: Record<string, string>
   }> {
-    if (!adapters) return { achievements: [], inventory: [] }
+    if (!adapters) {
+      return { achievements: [], inventory: [], achievementsLive: false, appNames: {} }
+    }
     const [achievements, inventory] = await Promise.all([
       adapters.nimconnect.getAchievements(),
       adapters.nimconnect.getInventory(),
     ])
-    return { achievements, inventory }
+    const achievementsLive = adapters.nimconnect.achievementsAreLive()
+    const catalogBySlug = new Map(
+      [...featuredApps.value, ...arcadeApps.value].map((a) => [a.slug || a.id, a.name]),
+    )
+    const appNames: Record<string, string> = {}
+    for (const item of achievements) {
+      if (appNames[item.appId]) continue
+      const fromNimConnect = await adapters.nimconnect.resolveAppDisplayName(item.appId)
+      appNames[item.appId] =
+        fromNimConnect !== item.appId
+          ? fromNimConnect
+          : (catalogBySlug.get(item.appId) ?? item.appId)
+    }
+    return { achievements, inventory, achievementsLive, appNames }
   }
 
   return {

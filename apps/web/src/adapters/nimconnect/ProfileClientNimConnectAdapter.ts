@@ -13,6 +13,7 @@ import {
   MOCK_PROFILE,
 } from './mockData'
 import { ensureNimConnectAccess, NIMCONNECT_AUDIENCE } from './friendsSession'
+import { pickAppDisplayName } from './appDisplayName'
 import type { AuthorizedApp, NimConnectAdapter, PermissionResult } from './types'
 import { openNimconnect } from './links'
 
@@ -31,6 +32,7 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
   private cachedProfile: PublicProfile | null = null
   /** Tracked separately — profile-client's getSessionToken() prefers the grant. */
   private firstPartySessionToken: string | null = null
+  private readonly appNameCache = new Map<string, string>()
 
   constructor(private readonly fallbackAddress?: string) {}
 
@@ -151,6 +153,37 @@ export class ProfileClientNimConnectAdapter implements NimConnectAdapter {
     } catch {
       return []
     }
+  }
+
+  achievementsAreLive(): boolean {
+    return true
+  }
+
+  async resolveAppDisplayName(appId: string): Promise<string> {
+    const cached = this.appNameCache.get(appId)
+    if (cached) return cached
+
+    let registeredName: string | null = null
+    try {
+      const app = await this.client.getApp(appId)
+      registeredName = app?.displayName ?? null
+    } catch {
+      registeredName = null
+    }
+
+    let authorizedName: string | null = null
+    if (!registeredName) {
+      try {
+        const grants = await this.listAuthorizedApps()
+        authorizedName = grants.find((g) => g.audience === appId)?.displayName ?? null
+      } catch {
+        authorizedName = null
+      }
+    }
+
+    const name = pickAppDisplayName({ appId, registeredName, authorizedName })
+    if (name !== appId) this.appNameCache.set(appId, name)
+    return name
   }
 
   async getInventory(appId?: string): Promise<InventoryItem[]> {

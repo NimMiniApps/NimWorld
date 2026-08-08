@@ -43,6 +43,13 @@ export interface NimConnectAdapter {
   /** Apps the user has granted — requires first-party NimConnect session. */
   listAuthorizedApps(): Promise<AuthorizedApp[]>
   getAchievements(appId?: string): Promise<Achievement[]>
+  /** True when achievements come from NimConnect rather than local mock data. */
+  achievementsAreLive(): boolean
+  /**
+   * Best display name from NimConnect (`getApp` / authorized grants).
+   * Falls back to the raw `appId` — never invents a pretty name.
+   */
+  resolveAppDisplayName(appId: string): Promise<string>
   getInventory(appId?: string): Promise<InventoryItem[]>
   requestScopes(scopes: NimConnectScope[]): Promise<PermissionResult>
   openProfile(handle?: string): Promise<void>

@@ -5,6 +5,7 @@ import type {
   PublicFriend,
   PublicProfile,
 } from '@/domain/types'
+import { pickAppDisplayName } from './appDisplayName'
 import type { AuthorizedApp, NimConnectAdapter, PermissionResult } from './types'
 import { openNimconnect } from './links'
 import {
@@ -78,6 +79,18 @@ export class MockNimConnectAdapter implements NimConnectAdapter {
 
   async getAchievements(appId?: string): Promise<Achievement[]> {
     return MOCK_ACHIEVEMENTS.filter((a) => !appId || a.appId === appId).map((a) => ({ ...a }))
+  }
+
+  achievementsAreLive(): boolean {
+    return false
+  }
+
+  async resolveAppDisplayName(appId: string): Promise<string> {
+    const grants = await this.listAuthorizedApps()
+    return pickAppDisplayName({
+      appId,
+      authorizedName: grants.find((g) => g.audience === appId)?.displayName ?? null,
+    })
   }
 
   async getInventory(appId?: string): Promise<InventoryItem[]> {
