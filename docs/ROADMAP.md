@@ -65,8 +65,8 @@ Depends on Phase 1 (real user identity to publish presence for).
 
 **Done when:** other apps' achievements, inventory, and activity are visible and trustworthy inside the plaza — NimWorld becomes shared ecosystem infrastructure, not just a Mini App.
 
-- Shared achievements (real, signed-event-verified, replacing mock)
-- Shared inventory (real, namespaced, app-local vs shared distinction enforced)
+- ~~Shared achievements (read path)~~ — done. Fountain loads validated awards from NimConnect `listAchievements` with awarded-by attribution; shelf stays empty until apps post awards. Write/verify path (signed events) still future work.
+- Shared inventory (real, namespaced, app-local vs shared distinction enforced) — still mock
 - ~~Activity feed (cross-app recent activity, public stats)~~ — done. Apps opt a line in with `"public": true` plus a short `text`; `GET /events/feed` serves the newest 25 to logged-in visitors and Town Hall renders them, each row opening that player's profile. Public stats wait for real app data to aggregate.
 - ~~Connected-app Arcade badges~~ — done for grants. Arcade shows **Connected** from NimConnect `listAuthorizations` (first-party session) and **Played** from local launch history as separate badges. Still no catalog favourites / installed library — that remains upstream if Mini Apps ever exposes one. No per-app Disconnect for third-party audiences yet.
 - NimConnect scopes beyond `profile:read` once they exist

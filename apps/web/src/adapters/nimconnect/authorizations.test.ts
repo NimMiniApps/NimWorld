@@ -88,7 +88,7 @@ describe('listAuthorizedApps', () => {
         expiresAt: 1700604800,
       },
     ])
-    expect(clientOptions.at(-1)).toMatchObject({
+    expect(clientOptions[clientOptions.length - 1]).toMatchObject({
       sessionToken: 'first-party',
       audience: 'nimworld',
     })
